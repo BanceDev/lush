@@ -332,8 +332,28 @@ int main() {
 	int status = 0;
 	while (true) {
 		// Prompt
+		char *username = getenv("USER");
+		char device_name[256];
+		gethostname(device_name, sizeof(device_name));
 		char *cwd = getcwd(NULL, 0);
-		printf("%s _> ", cwd);
+
+		// Replace /home/<user> with ~
+		char *home_prefix = "/home/";
+		size_t home_len = strlen(home_prefix) + strlen(username);
+		char *prompt_cwd;
+		if (strncmp(cwd, home_prefix, strlen(home_prefix)) == 0 &&
+			strncmp(cwd + strlen(home_prefix), username, strlen(username)) ==
+				0) {
+			prompt_cwd = malloc(strlen(cwd) - home_len +
+								2); // 1 for ~ and 1 for null terminator
+			snprintf(prompt_cwd, strlen(cwd) - home_len + 2, "~%s",
+					 cwd + home_len);
+		} else {
+			prompt_cwd = strdup(cwd);
+		}
+
+		// Print the prompt
+		printf("%s@%s:%s$ ", username, device_name, prompt_cwd);
 
 		char *line = lush_read_line();
 		char **commands = lush_split_pipes(line);
