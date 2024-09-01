@@ -1,0 +1,16 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/cc",
+      "-DDEBUG",
+      "-g",
+      "-c",
+      "-o",
+      "obj/Debug/lush.o",
+      "src/lush.c"
+    ],
+    "directory": "/home/lanceb/projects/lush",
+    "file": "/home/lanceb/projects/lush/src/lush.c",
+    "output": "/home/lanceb/projects/lush/obj/Debug/lush.o"
+  }
+]
