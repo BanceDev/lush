@@ -15,12 +15,18 @@ rm premake.tar.gz
 premake5 gmake
 make
 
-sudo cp ./bin/Debug/lush/lush /usr/bin/lush
+# Install the new shell binary to a temporary location
+sudo cp ./bin/Debug/lush/lush /usr/bin/lush.new
 
+# Atomically replace the old binary
+sudo mv /usr/bin/lush.new /usr/bin/lush
+
+# Ensure the shell is registered in /etc/shells
 if ! grep -Fxq "/usr/bin/lush" /etc/shells; then
     echo "/usr/bin/lush" | sudo tee -a /etc/shells >/dev/null
 fi
 
+# Optionally change the shell
 chsh -s /usr/bin/lush
 
 echo "====================="

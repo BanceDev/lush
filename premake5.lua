@@ -11,6 +11,7 @@ files({
 	"src/**.h",
 	"src/**.c",
 })
+defines({ 'LUSH_VERSION="0.0.1"' })
 
 filter("configurations:Debug")
 defines({ "DEBUG" })

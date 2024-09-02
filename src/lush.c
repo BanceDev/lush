@@ -16,9 +16,11 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
 #include "lush.h"
+#include "help.h"
 #include <bits/time.h>
 #include <linux/limits.h>
 #include <pwd.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,8 +73,12 @@ int lush_cd(char ***args) {
 }
 
 int lush_help(char ***args) {
-	// TODO: make this more fun
-	printf("Lunar Shell Help Page\n\n");
+	printf("%s\n", lush_get_help_text());
+#ifdef LUSH_VERSION
+	printf("Lunar Shell, version %s\n", LUSH_VERSION);
+#endif
+	printf("These shell commands are defined internally. Type 'help' at any "
+		   "time to reference this list.\n");
 	printf("Available commands: \n");
 	for (int i = 0; i < lush_num_builtins(); i++) {
 		printf("- %s\n", builtin_strs[i]);
@@ -102,7 +108,7 @@ int lush_time(char ***args) {
 
 	elapsed_time = (end.tv_sec - start.tv_sec) * 1000.0 +
 				   (end.tv_nsec - start.tv_nsec) / 1e6;
-	printf("Time: %.3f milliseconds", elapsed_time);
+	printf("Time: %.3f milliseconds\n", elapsed_time);
 
 	// return pointer back to "time" for free()
 	args[0]--;
@@ -278,11 +284,19 @@ int lush_execute_pipeline(char ***commands, int num_commands) {
 void lush_execute_command(char **args, int input_fd, int output_fd) {
 	// create child
 	pid_t pid;
-	pid_t wpid;
 	int status;
+
+	// ignore SIGINT in the parent process
+	struct sigaction sa;
+	sa.sa_handler = SIG_IGN;
+	sigaction(SIGINT, &sa, NULL);
 
 	if ((pid = fork()) == 0) {
 		// child process content
+
+		// restore default sigint for child
+		sa.sa_handler = SIG_DFL;
+		sigaction(SIGINT, &sa, NULL);
 
 		// redirect in and out fd's if needed
 		if (input_fd != STDIN_FILENO) {
@@ -307,7 +321,7 @@ void lush_execute_command(char **args, int input_fd, int output_fd) {
 	} else {
 		// parent process
 		do {
-			wpid = waitpid(pid, &status, WUNTRACED);
+			waitpid(pid, &status, WUNTRACED);
 		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 	}
 }
@@ -353,7 +367,7 @@ int main() {
 		}
 
 		// Print the prompt
-		printf("%s@%s:%s$ ", username, device_name, prompt_cwd);
+		printf("[%s@%s:%s] ", username, device_name, prompt_cwd);
 
 		char *line = lush_read_line();
 		char **commands = lush_split_pipes(line);
