@@ -25,6 +25,9 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <stdlib.h>
 #include <unistd.h>
 
+// global for checking if debug_mode is toggled
+static bool debug_mode = false;
+
 // -- script execution --
 void lua_load_script(lua_State *L, const char *script) {
 	char script_path[512];
@@ -80,7 +83,15 @@ static int execute_command(lua_State *L, const char *line) {
 static int l_execute_command(lua_State *L) {
 	const char *command = luaL_checkstring(L, 1);
 	int status = execute_command(L, command);
-	bool rc = status == 0 ? true : false;
+	bool rc = status != -1 ? true : false;
+
+	if (debug_mode) {
+		if (rc)
+			printf("Executed: %s, success\n", command);
+		else
+			printf("Executed: %s, failed\n", command);
+	}
+
 	lua_pushboolean(L, rc);
 	return 1;
 }
@@ -90,6 +101,13 @@ static int l_get_cwd(lua_State *L) {
 	lua_pushstring(L, cwd);
 	free(cwd);
 	return 1;
+}
+
+static int l_debug(lua_State *L) {
+	if (lua_isboolean(L, 1)) {
+		debug_mode = lua_toboolean(L, 1);
+	}
+	return 0;
 }
 
 // -- register Lua functions --
@@ -102,6 +120,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "exec");
 	lua_pushcfunction(L, l_get_cwd);
 	lua_setfield(L, -2, "getcwd");
+	lua_pushcfunction(L, l_debug);
+	lua_setfield(L, -2, "debug");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }

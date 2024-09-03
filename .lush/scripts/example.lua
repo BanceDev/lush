@@ -30,6 +30,11 @@ if lush.exec('echo "hello world"\n') then
 	print("echo worked properly")
 end
 
+-- debug mode can be used to log execution of commands
+lush.debug(true) -- enters debug
+lush.exec('echo "echo in debug mode"')
+lush.debug(false) -- exits debug
+
 -- getcwd returns the current working directory
 local cwd = lush.getcwd()
 print(cwd)
