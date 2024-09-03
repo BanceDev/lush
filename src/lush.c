@@ -69,7 +69,7 @@ int lush_cd(lua_State *L, char ***args) {
 		char *exp_path = realpath(path, extended_path);
 		if (!exp_path) {
 			perror("realpath");
-			return 0;
+			return 1;
 		}
 		if (chdir(exp_path) != 0) {
 			perror("lush: cd");
