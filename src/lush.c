@@ -27,8 +27,11 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
+
+#define BUFFER_SIZE 1024
 
 // -- builtin functions --
 char *builtin_strs[] = {"cd", "help", "exit", "time"};
@@ -116,18 +119,115 @@ int lush_time(char ***args) {
 }
 
 // -- shell utility --
+
+// -- static helpers for input --
+
+static void set_raw_mode(struct termios *orig_termios) {
+	struct termios raw;
+	tcgetattr(STDIN_FILENO, orig_termios);
+	raw = *orig_termios;
+	raw.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+}
+
+static void reset_terminal_mode(struct termios *orig_termios) {
+	tcsetattr(STDIN_FILENO, TCSANOW, orig_termios);
+}
+
+static void print_prompt() {
+	char *username = getenv("USER");
+	char device_name[256];
+	gethostname(device_name, sizeof(device_name));
+	char *cwd = getcwd(NULL, 0);
+
+	// Replace /home/<user> with ~
+	char *home_prefix = "/home/";
+	size_t home_len = strlen(home_prefix) + strlen(username);
+	char *prompt_cwd;
+	if (strncmp(cwd, home_prefix, strlen(home_prefix)) == 0 &&
+		strncmp(cwd + strlen(home_prefix), username, strlen(username)) == 0) {
+		prompt_cwd = malloc(strlen(cwd) - home_len +
+							2); // 1 for ~ and 1 for null terminator
+		snprintf(prompt_cwd, strlen(cwd) - home_len + 2, "~%s", cwd + home_len);
+	} else {
+		prompt_cwd = strdup(cwd);
+	}
+
+	// Print the prompt
+	printf("[%s@%s:%s] ", username, device_name, prompt_cwd);
+	free(cwd);
+}
+
+static void reprint_buffer(const char *buffer, int pos) {
+	printf("\r\033[K");
+	print_prompt();
+	printf("%s ", buffer);
+	printf("\033[%ldD", strlen(buffer) - pos + 1);
+}
+
 char *lush_read_line() {
-	char *line = NULL;
-	size_t bufsize = 0;
-	if (getline(&line, &bufsize, stdin) == -1) {
-		if (feof(stdin)) {
-			exit(EXIT_SUCCESS);
+	struct termios orig_termios;
+	char *buffer = (char *)calloc(BUFFER_SIZE, sizeof(char));
+	int pos = 0;
+	int c;
+
+	// init buffer and make raw mode
+	set_raw_mode(&orig_termios);
+
+	while (true) {
+		c = getchar();
+
+		if (c == '\033') { // escape sequence
+			getchar();	   // skip [
+			switch (getchar()) {
+			case 'C': // right arrow
+				if (pos < strlen(buffer)) {
+					pos++;
+					reprint_buffer(buffer, pos);
+				}
+				break;
+			case 'D': // left arrow
+				if (pos > 0) {
+					pos--;
+					reprint_buffer(buffer, pos);
+				}
+				break;
+			case '3': // delete
+				if (getchar() == '~') {
+					if (pos < strlen(buffer)) {
+						memmove(&buffer[pos], &buffer[pos + 1],
+								strlen(&buffer[pos + 1]) + 1);
+						reprint_buffer(buffer, pos);
+					}
+				}
+				break;
+			default:
+				break;
+			}
+		} else if (c == '\177') { // backspace
+			if (pos > 0) {
+				memmove(&buffer[pos - 1], &buffer[pos],
+						strlen(&buffer[pos]) + 1);
+				pos--;
+				reprint_buffer(buffer, pos);
+			}
+		} else if (c == '\n') {
+			break; // submit the command
 		} else {
-			perror("readline");
-			exit(EXIT_FAILURE);
+			if (pos < BUFFER_SIZE - 1) {
+				// insert text into buffer
+				memmove(&buffer[pos + 1], &buffer[pos],
+						strlen(&buffer[pos]) + 1);
+				buffer[pos] = c;
+				pos++;
+
+				reprint_buffer(buffer, pos);
+			}
 		}
 	}
-	return line;
+
+	reset_terminal_mode(&orig_termios);
+	return buffer;
 }
 
 char **lush_split_pipes(char *line) {
@@ -286,10 +386,7 @@ void lush_execute_command(char **args, int input_fd, int output_fd) {
 	pid_t pid;
 	int status;
 
-	// ignore SIGINT in the parent process
 	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;
-	sigaction(SIGINT, &sa, NULL);
 
 	if ((pid = fork()) == 0) {
 		// child process content
@@ -343,33 +440,23 @@ int lush_run(char ***commands, int num_commands) {
 }
 
 int main() {
+	// eat ^C in main
+	struct sigaction sa;
+	sa.sa_handler = SIG_IGN;
+	sa.sa_flags = 0;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGINT, &sa, NULL);
+
 	int status = 0;
 	while (true) {
 		// Prompt
-		char *username = getenv("USER");
-		char device_name[256];
-		gethostname(device_name, sizeof(device_name));
-		char *cwd = getcwd(NULL, 0);
-
-		// Replace /home/<user> with ~
-		char *home_prefix = "/home/";
-		size_t home_len = strlen(home_prefix) + strlen(username);
-		char *prompt_cwd;
-		if (strncmp(cwd, home_prefix, strlen(home_prefix)) == 0 &&
-			strncmp(cwd + strlen(home_prefix), username, strlen(username)) ==
-				0) {
-			prompt_cwd = malloc(strlen(cwd) - home_len +
-								2); // 1 for ~ and 1 for null terminator
-			snprintf(prompt_cwd, strlen(cwd) - home_len + 2, "~%s",
-					 cwd + home_len);
-		} else {
-			prompt_cwd = strdup(cwd);
-		}
-
-		// Print the prompt
-		printf("[%s@%s:%s] ", username, device_name, prompt_cwd);
-
+		print_prompt();
 		char *line = lush_read_line();
+		if (line == NULL || strlen(line) == 0) {
+			free(line);
+			continue;
+		}
+		printf("\n");
 		char **commands = lush_split_pipes(line);
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
@@ -384,6 +471,5 @@ int main() {
 		free(args);
 		free(commands);
 		free(line);
-		free(cwd);
 	}
 }
