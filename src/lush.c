@@ -38,10 +38,10 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #define BUFFER_SIZE 1024
 
 // -- builtin functions --
-char *builtin_strs[] = {"cd", "help", "exit", "time", "lush"};
+char *builtin_strs[] = {"cd", "help", "exit", "time"};
 
 int (*builtin_func[])(lua_State *, char ***) = {
-	&lush_cd, &lush_help, &lush_exit, &lush_time, &lush_lush};
+	&lush_cd, &lush_help, &lush_exit, &lush_time, &lush_lua};
 
 int lush_num_builtins() { return sizeof(builtin_strs) / sizeof(char *); }
 
@@ -122,15 +122,10 @@ int lush_time(lua_State *L, char ***args) {
 	return rc;
 }
 
-int lush_lush(lua_State *L, char ***args) {
-	// move past lush command
-	args[0]++;
-
+int lush_lua(lua_State *L, char ***args) {
 	// run the lua file given
 	lua_load_script(L, args[0][0]);
 
-	// return pointer back for free()
-	args[0]--;
 	return 1;
 }
 
@@ -443,6 +438,15 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 	if (commands[0][0] == NULL) {
 		// no command given
 		return 1;
+	}
+
+	// check if the command is a lua script
+	char *ext = strchr(commands[0][0], '.');
+	if (ext) {
+		ext++;
+		if (strcmp(ext, "lua") == 0) {
+			return ((*builtin_func[4])(L, commands));
+		}
 	}
 
 	// check shell builtins
