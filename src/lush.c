@@ -17,6 +17,10 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #include "lush.h"
 #include "help.h"
+#include "lauxlib.h"
+#include "lua.h"
+#include "lua_api.h"
+#include "lualib.h"
 #include <bits/time.h>
 #include <linux/limits.h>
 #include <pwd.h>
@@ -34,14 +38,14 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #define BUFFER_SIZE 1024
 
 // -- builtin functions --
-char *builtin_strs[] = {"cd", "help", "exit", "time"};
+char *builtin_strs[] = {"cd", "help", "exit", "time", "lush"};
 
-int (*builtin_func[])(char ***) = {&lush_cd, &lush_help, &lush_exit,
-								   &lush_time};
+int (*builtin_func[])(lua_State *, char ***) = {
+	&lush_cd, &lush_help, &lush_exit, &lush_time, &lush_lush};
 
 int lush_num_builtins() { return sizeof(builtin_strs) / sizeof(char *); }
 
-int lush_cd(char ***args) {
+int lush_cd(lua_State *L, char ***args) {
 	uid_t uid = getuid();
 	struct passwd *pw = getpwuid(uid);
 	if (!pw) {
@@ -75,7 +79,7 @@ int lush_cd(char ***args) {
 	return 1;
 }
 
-int lush_help(char ***args) {
+int lush_help(lua_State *L, char ***args) {
 	printf("%s\n", lush_get_help_text());
 #ifdef LUSH_VERSION
 	printf("Lunar Shell, version %s\n", LUSH_VERSION);
@@ -89,9 +93,9 @@ int lush_help(char ***args) {
 	return 1;
 }
 
-int lush_exit(char ***args) { return 0; }
+int lush_exit(lua_State *L, char ***args) { return 0; }
 
-int lush_time(char ***args) {
+int lush_time(lua_State *L, char ***args) {
 	// advance past time command
 	args[0]++;
 
@@ -106,7 +110,7 @@ int lush_time(char ***args) {
 	double elapsed_time;
 
 	clock_gettime(CLOCK_MONOTONIC, &start);
-	int rc = lush_run(args, i);
+	int rc = lush_run(L, args, i);
 	clock_gettime(CLOCK_MONOTONIC, &end);
 
 	elapsed_time = (end.tv_sec - start.tv_sec) * 1000.0 +
@@ -116,6 +120,16 @@ int lush_time(char ***args) {
 	// return pointer back to "time" for free()
 	args[0]--;
 	return rc;
+}
+
+int lush_lush(lua_State *L, char ***args) {
+	// run the lua file given
+	args[0]++;
+	lua_load_script(L, *args[0]);
+
+	// return pointer back for free()
+	args[0]--;
+	return 1;
 }
 
 // -- shell utility --
@@ -423,7 +437,7 @@ void lush_execute_command(char **args, int input_fd, int output_fd) {
 	}
 }
 
-int lush_run(char ***commands, int num_commands) {
+int lush_run(lua_State *L, char ***commands, int num_commands) {
 	if (commands[0][0] == NULL) {
 		// no command given
 		return 1;
@@ -432,7 +446,7 @@ int lush_run(char ***commands, int num_commands) {
 	// check shell builtins
 	for (int i = 0; i < lush_num_builtins(); i++) {
 		if (strcmp(commands[0][0], builtin_strs[i]) == 0) {
-			return ((*builtin_func[i])(commands));
+			return ((*builtin_func[i])(L, commands));
 		}
 	}
 
@@ -440,6 +454,9 @@ int lush_run(char ***commands, int num_commands) {
 }
 
 int main() {
+	lua_State *L = luaL_newstate();
+	luaL_openlibs(L);
+	lua_register_api(L);
 	// eat ^C in main
 	struct sigaction sa;
 	sa.sa_handler = SIG_IGN;
@@ -452,16 +469,16 @@ int main() {
 		// Prompt
 		print_prompt();
 		char *line = lush_read_line();
+		printf("\n");
 		if (line == NULL || strlen(line) == 0) {
 			free(line);
 			continue;
 		}
-		printf("\n");
 		char **commands = lush_split_pipes(line);
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
-		} else if (lush_run(args, status) == 0) {
+		} else if (lush_run(L, args, status) == 0) {
 			exit(1);
 		}
 
@@ -472,4 +489,5 @@ int main() {
 		free(commands);
 		free(line);
 	}
+	lua_close(L);
 }

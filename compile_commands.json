@@ -2,7 +2,9 @@
   {
     "arguments": [
       "/usr/bin/cc",
+      "-DLUSH_VERSION=\"0.0.1\"",
       "-DDEBUG",
+      "-I/usr/include/lua5.4",
       "-g",
       "-c",
       "-o",

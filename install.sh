@@ -1,5 +1,42 @@
 #!/bin/sh
 
+# Function to install packages using apt (Debian/Ubuntu)
+install_with_apt() {
+    sudo apt-get update
+    sudo apt-get install -y lua5.4 liblua5.4-dev
+}
+
+# Function to install packages using yum (Red Hat/CentOS)
+install_with_yum() {
+    sudo yum install -y epel-release
+    sudo yum install -y lua lua-devel
+}
+
+# New package manager used in Fedora
+install_with_dnf() {
+    sudo dnf install -y lua lua-devel
+}
+
+# Function to install packages using pacman (Arch Linux)
+install_with_pacman() {
+    sudo pacman -Sy --noconfirm lua
+}
+
+if [ -f /etc/arch-release ]; then
+    install_with_pacman
+elif [ -f /etc/debian_version ]; then
+    install_with_apt
+elif [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]; then
+    if command -v dnf >/dev/null 2>&1; then
+        install_with_dnf
+    else
+        install_with_yum
+    fi
+else
+    echo "Your linux distro is not supported currently."
+    echo "You need to manually install those packages: exiftool, jq, glfw"
+fi
+
 PREMAKE_VERSION="5.0.0-beta2"
 OS="linux"
 
@@ -14,6 +51,7 @@ rm premake.tar.gz
 
 premake5 gmake
 make
+cp -rf ./.lush ~/
 
 # Install the new shell binary to a temporary location
 sudo cp ./bin/Debug/lush/lush /usr/bin/lush.new

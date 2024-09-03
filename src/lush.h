@@ -18,14 +18,17 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #ifndef LUSH_H
 #define LUSH_H
 
-int lush_cd(char ***args);
-int lush_help(char ***args);
-int lush_exit(char ***args);
-int lush_time(char ***args);
+#include <lua.h>
+
+int lush_cd(lua_State *L, char ***args);
+int lush_help(lua_State *L, char ***args);
+int lush_exit(lua_State *L, char ***args);
+int lush_time(lua_State *L, char ***args);
+int lush_lush(lua_State *L, char ***args);
 
 int lush_num_builtins();
 
-int lush_run(char ***commands, int num_commands);
+int lush_run(lua_State *L, char ***commands, int num_commands);
 
 char *lush_read_line();
 char **lush_split_pipes(char *line);
