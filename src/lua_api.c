@@ -22,12 +22,37 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <lualib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 // -- script execution --
 void lua_load_script(lua_State *L, const char *script) {
-	if (luaL_dofile(L, script) != LUA_OK) {
+	char script_path[512];
+	// check if script is in the current directory
+	if (access(script, F_OK) == 0) {
+		snprintf(script_path, sizeof(script_path), "%s", script);
+	} else {
+		const char *home_dir = getenv("HOME");
+		if (home_dir != NULL) {
+			snprintf(script_path, sizeof(script_path), "%s/.lush/scripts/%s",
+					 home_dir, script);
+
+			if (access(script_path, F_OK) != 0) {
+				// script not in either location
+				fprintf(stderr, "[C] Script not found: %s\n", script);
+				return;
+			}
+		} else {
+			// HOME not set
+			fprintf(stderr, "[C] HOME directory is not set.\n");
+			return;
+		}
+	}
+	// if we got here the file exists
+	if (luaL_dofile(L, script_path) != LUA_OK) {
 		printf("[C] Error reading script\n");
 		luaL_error(L, "Error: %s\n", lua_tostring(L, -1));
+		// remove error from stack
+		lua_pop(L, 1);
 	}
 }
 
