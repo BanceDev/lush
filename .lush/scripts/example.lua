@@ -15,10 +15,27 @@ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 ]]
 
+-- This file is a demo of all of the commands Lunar Shell has in its Lua API
 -- the Lua file itself is the executable unit so all code is run line by line
 
--- the print function can be used to write to the console
+-- All Lua specific tools still work here too. Functions, loops, conditionals,
+-- tables, Lua's standard library, etc are all available to integrate with Lunar Shell
+
 print("Welcome to Lunar Shell scripting")
 
 -- exec can be used to run any command line prompt
-exec('echo "hello world"\n')
+-- this method is much more native than using os.execute and is the recommended function
+-- it also returns a boolean on if the command executed successfully
+if lush.exec('echo "hello world"\n') then
+	print("echo worked properly")
+end
+
+-- getcwd returns the current working directory
+local cwd = lush.getcwd()
+print(cwd)
+
+-- exec also supports piping
+-- this comment will get grepped since it says hello
+lush.exec("cd " .. os.getenv("HOME") .. "/.lush/scripts")
+lush.exec('cat "example.lua" | grep "hello" | sort | uniq')
+lush.exec("cd " .. cwd)

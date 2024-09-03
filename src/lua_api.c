@@ -20,6 +20,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -57,7 +58,7 @@ void lua_load_script(lua_State *L, const char *script) {
 }
 
 // -- C funtions --
-static void execute_command(lua_State *L, const char *line) {
+static int execute_command(lua_State *L, const char *line) {
 	int status = 0;
 	char **commands = lush_split_pipes((char *)line);
 	char ***args = lush_split_args(commands, &status);
@@ -72,17 +73,35 @@ static void execute_command(lua_State *L, const char *line) {
 	}
 	free(args);
 	free(commands);
+	return status;
 }
 
 // -- Lua wrappers --
 static int l_execute_command(lua_State *L) {
 	const char *command = luaL_checkstring(L, 1);
-	execute_command(L, command);
-	return 0;
+	int status = execute_command(L, command);
+	bool rc = status == 0 ? true : false;
+	lua_pushboolean(L, rc);
+	return 1;
+}
+
+static int l_get_cwd(lua_State *L) {
+	char *cwd = getcwd(NULL, 0);
+	lua_pushstring(L, cwd);
+	free(cwd);
+	return 1;
 }
 
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
-	lua_register(L, "exec", l_execute_command);
+	// global table for api functions
+	lua_newtable(L);
+
+	lua_pushcfunction(L, l_execute_command);
+	lua_setfield(L, -2, "exec");
+	lua_pushcfunction(L, l_get_cwd);
+	lua_setfield(L, -2, "getcwd");
+	// set the table as global
+	lua_setglobal(L, "lush");
 }

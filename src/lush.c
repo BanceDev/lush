@@ -123,9 +123,11 @@ int lush_time(lua_State *L, char ***args) {
 }
 
 int lush_lush(lua_State *L, char ***args) {
-	// run the lua file given
+	// move past lush command
 	args[0]++;
-	lua_load_script(L, *args[0]);
+
+	// run the lua file given
+	lua_load_script(L, args[0][0]);
 
 	// return pointer back for free()
 	args[0]--;
