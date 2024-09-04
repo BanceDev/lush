@@ -22,6 +22,7 @@ For future compiles just run ```make``` from the root directory. If you change t
 
 ## Contributing
 
+- Before opening an issue or a PR please check out the [contributing guide](https://github.com/BanceDev/lush/blob/main/CONTRIBUTING.md).
 - For bug reports and feature suggestions please use [issues](https://github.com/BanceDev/lush/issues).
 - If you wish to contribute code of your own please submit a [pull request](https://github.com/BanceDev/lush/pulls).
 - Note: It is likely best to submit an issue before a PR to see if the feature is wanted before spending time making a commit.
