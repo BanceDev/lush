@@ -157,7 +157,7 @@ int get_terminal_width() {
 	return w.ws_col;
 }
 
-static void reprint_buffer(const char *buffer, int pos) {
+static void reprint_buffer(char *buffer, int *pos, int history_pos) {
 	char *username = getenv("USER");
 	char device_name[256];
 	gethostname(device_name, sizeof(device_name));
@@ -190,9 +190,19 @@ static void reprint_buffer(const char *buffer, int pos) {
 		if (i > 0)
 			printf("\033[A");
 	}
+	if (history_pos >= 0) {
+		char *history_line = lush_get_past_command(history_pos);
+		strncpy(buffer, history_line, BUFFER_SIZE);
+		free(history_line);
+		// remove newline from buffer
+		buffer[strlen(buffer) - 1] = '\0';
+		*pos = strlen(buffer);
+	}
+	// ensure line is cleared before printing
+	printf("\r\033[K");
 	printf("%s ", prompt);
 	printf("%s ", buffer);
-	printf("\033[%ldD", strlen(buffer) - pos + 1);
+	printf("\033[%ldD", strlen(buffer) - *pos + 1);
 
 	free(cwd);
 	free(prompt);
@@ -202,7 +212,7 @@ char *lush_read_line() {
 	struct termios orig_termios;
 	char *buffer = (char *)calloc(BUFFER_SIZE, sizeof(char));
 	int pos = 0;
-	int history_pos = 0;
+	int history_pos = -1;
 	int c;
 
 	// init buffer and make raw mode
@@ -216,37 +226,24 @@ char *lush_read_line() {
 			switch (getchar()) {
 			case 'A': // up arrow
 			{
-				char *history_line = lush_get_past_command(history_pos);
-				strncpy(buffer, history_line, BUFFER_SIZE);
-				free(history_line);
-				// remove newline from buffer
-				buffer[strlen(buffer) - 1] = '\0';
-				pos = strlen(buffer);
-				reprint_buffer(buffer, pos);
-				history_pos++;
+				reprint_buffer(buffer, &pos, ++history_pos);
 			} break;
 			case 'B': // down arrow
 			{
-				char *history_line = lush_get_past_command(history_pos);
-				strncpy(buffer, history_line, BUFFER_SIZE);
-				free(history_line);
-				// remove newline from buffer
-				buffer[strlen(buffer) - 1] = '\0';
-				pos = strlen(buffer);
-				reprint_buffer(buffer, pos);
-				if (history_pos > 0)
-					history_pos--;
+				reprint_buffer(buffer, &pos, --history_pos);
+				if (history_pos < 0)
+					history_pos = 0;
 			} break;
 			case 'C': // right arrow
 				if (pos < strlen(buffer)) {
 					pos++;
-					reprint_buffer(buffer, pos);
+					reprint_buffer(buffer, &pos, history_pos);
 				}
 				break;
 			case 'D': // left arrow
 				if (pos > 0) {
 					pos--;
-					reprint_buffer(buffer, pos);
+					reprint_buffer(buffer, &pos, history_pos);
 				}
 				break;
 			case '3': // delete
@@ -254,11 +251,11 @@ char *lush_read_line() {
 					if (pos < strlen(buffer)) {
 						memmove(&buffer[pos], &buffer[pos + 1],
 								strlen(&buffer[pos + 1]) + 1);
-						reprint_buffer(buffer, pos);
+						// if modifying text reset history
+						history_pos = -1;
+						reprint_buffer(buffer, &pos, history_pos);
 					}
 				}
-				// if modifying text reset history
-				history_pos = 0;
 				break;
 			default:
 				break;
@@ -268,13 +265,13 @@ char *lush_read_line() {
 				memmove(&buffer[pos - 1], &buffer[pos],
 						strlen(&buffer[pos]) + 1);
 				pos--;
-				reprint_buffer(buffer, pos);
+				// if modifying text reset history
+				history_pos = -1;
+				reprint_buffer(buffer, &pos, history_pos);
 			}
-			// if modifying text reset history
-			history_pos = 0;
 		} else if (c == '\n') {
 			// if modifying text reset history
-			history_pos = 0;
+			history_pos = -1;
 			break; // submit the command
 		} else {
 			if (pos < BUFFER_SIZE - 1) {
@@ -284,9 +281,9 @@ char *lush_read_line() {
 				buffer[pos] = c;
 				pos++;
 
-				reprint_buffer(buffer, pos);
 				// if modifying text reset history
-				history_pos = 0;
+				history_pos = -1;
+				reprint_buffer(buffer, &pos, history_pos);
 			}
 		}
 	}
