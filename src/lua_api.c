@@ -166,6 +166,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "getcwd");
 	lua_pushcfunction(L, l_debug);
 	lua_setfield(L, -2, "debug");
+	lua_pushcfunction(L, l_cd);
+	lua_setfield(L, -2, "cd");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }
