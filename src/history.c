@@ -151,7 +151,8 @@ void lush_push_history(const char *line) {
 	fprintf(fp, "%s\n", line);
 
 	// Write the last MAX_LINES lines
-	for (int i = 0; i < MAX_LINES; i++) {
+	int total_lines = line_count < MAX_LINES ? line_count : MAX_LINES;
+	for (int i = 0; i < total_lines; i++) {
 		fprintf(fp, "%s", lines[i]);
 		free(lines[i]); // Free each line after writing
 	}

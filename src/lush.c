@@ -202,6 +202,7 @@ char *lush_read_line() {
 	struct termios orig_termios;
 	char *buffer = (char *)calloc(BUFFER_SIZE, sizeof(char));
 	int pos = 0;
+	int history_pos = 0;
 	int c;
 
 	// init buffer and make raw mode
@@ -213,6 +214,29 @@ char *lush_read_line() {
 		if (c == '\033') { // escape sequence
 			getchar();	   // skip [
 			switch (getchar()) {
+			case 'A': // up arrow
+			{
+				char *history_line = lush_get_past_command(history_pos);
+				strncpy(buffer, history_line, BUFFER_SIZE);
+				free(history_line);
+				// remove newline from buffer
+				buffer[strlen(buffer) - 1] = '\0';
+				pos = strlen(buffer);
+				reprint_buffer(buffer, pos);
+				history_pos++;
+			} break;
+			case 'B': // down arrow
+			{
+				char *history_line = lush_get_past_command(history_pos);
+				strncpy(buffer, history_line, BUFFER_SIZE);
+				free(history_line);
+				// remove newline from buffer
+				buffer[strlen(buffer) - 1] = '\0';
+				pos = strlen(buffer);
+				reprint_buffer(buffer, pos);
+				if (history_pos > 0)
+					history_pos--;
+			} break;
 			case 'C': // right arrow
 				if (pos < strlen(buffer)) {
 					pos++;
@@ -233,6 +257,8 @@ char *lush_read_line() {
 						reprint_buffer(buffer, pos);
 					}
 				}
+				// if modifying text reset history
+				history_pos = 0;
 				break;
 			default:
 				break;
@@ -244,7 +270,11 @@ char *lush_read_line() {
 				pos--;
 				reprint_buffer(buffer, pos);
 			}
+			// if modifying text reset history
+			history_pos = 0;
 		} else if (c == '\n') {
+			// if modifying text reset history
+			history_pos = 0;
 			break; // submit the command
 		} else {
 			if (pos < BUFFER_SIZE - 1) {
@@ -255,6 +285,8 @@ char *lush_read_line() {
 				pos++;
 
 				reprint_buffer(buffer, pos);
+				// if modifying text reset history
+				history_pos = 0;
 			}
 		}
 	}
