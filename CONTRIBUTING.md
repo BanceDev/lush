@@ -44,3 +44,21 @@ void draw();
 - Use sized operations as often as possible to avoid buffer overflows ex: strncpy vs strcpy
 
 ## PR Guidelines
+
+When opening a pull request ensure that your PR is limited in scope to a singular change, fix, or feature. Also make sure it includes the following
+
+- A detailed description of what your changes include
+- If a new function is added to the Lua API also include demo code in the example.lua file showing its use
+- If you can, attach a screenshot demonstrating your change
+
+PR's will be reviewed by one of the maintainers. If they request changes, please make them or the PR will not be able to be accepted.
+
+## Issue Guidelines
+
+When opening an issue please follow a similar format to PRs
+
+- A detailed description of what your issue is
+- If it is a bug include steps to recreate the issue
+- If the issue is asking for a new lua API method, show an example of its intended use if you can
+- If you can, attach a screenshot showing your issue
+
