@@ -41,6 +41,6 @@ print(cwd)
 
 -- exec also supports piping
 -- this comment will get grepped since it says hello
-lush.exec("cd " .. os.getenv("HOME") .. "/.lush/scripts")
+lush.cd("~/.lush/scripts")
 lush.exec('cat "example.lua" | grep "hello" | sort | uniq')
-lush.exec("cd " .. cwd)
+lush.cd(cwd)
