@@ -16,6 +16,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
 #include "lua_api.h"
+#include "history.h"
 #include "lush.h"
 #include <lauxlib.h>
 #include <lua.h>
@@ -76,6 +77,7 @@ static int execute_command(lua_State *L, const char *line) {
 	for (int i = 0; args[i]; i++) {
 		free(args[i]);
 	}
+	lush_push_history(line);
 	free(args);
 	free(commands);
 	return status;

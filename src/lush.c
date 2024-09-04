@@ -17,6 +17,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #include "lush.h"
 #include "help.h"
+#include "history.h"
 #include "lauxlib.h"
 #include "lua.h"
 #include "lua_api.h"
@@ -517,6 +518,7 @@ int main() {
 		// Print the prompt
 		printf("[%s@%s:%s] ", username, device_name, prompt_cwd);
 		char *line = lush_read_line();
+		lush_push_history(line);
 		printf("\n");
 		if (line == NULL || strlen(line) == 0) {
 			free(line);
@@ -533,6 +535,7 @@ int main() {
 		for (int i = 0; args[i]; i++) {
 			free(args[i]);
 		}
+		// add last line to history
 		free(cwd);
 		free(args);
 		free(commands);
