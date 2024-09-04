@@ -147,30 +147,6 @@ static void reset_terminal_mode(struct termios *orig_termios) {
 	tcsetattr(STDIN_FILENO, TCSANOW, orig_termios);
 }
 
-static void print_prompt() {
-	char *username = getenv("USER");
-	char device_name[256];
-	gethostname(device_name, sizeof(device_name));
-	char *cwd = getcwd(NULL, 0);
-
-	// Replace /home/<user> with ~
-	char *home_prefix = "/home/";
-	size_t home_len = strlen(home_prefix) + strlen(username);
-	char *prompt_cwd;
-	if (strncmp(cwd, home_prefix, strlen(home_prefix)) == 0 &&
-		strncmp(cwd + strlen(home_prefix), username, strlen(username)) == 0) {
-		prompt_cwd = malloc(strlen(cwd) - home_len +
-							2); // 1 for ~ and 1 for null terminator
-		snprintf(prompt_cwd, strlen(cwd) - home_len + 2, "~%s", cwd + home_len);
-	} else {
-		prompt_cwd = strdup(cwd);
-	}
-
-	// Print the prompt
-	printf("[%s@%s:%s] ", username, device_name, prompt_cwd);
-	free(cwd);
-}
-
 int get_terminal_width() {
 	struct winsize w;
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
@@ -518,7 +494,28 @@ int main() {
 	int status = 0;
 	while (true) {
 		// Prompt
-		print_prompt();
+		char *username = getenv("USER");
+		char device_name[256];
+		gethostname(device_name, sizeof(device_name));
+		char *cwd = getcwd(NULL, 0);
+
+		// Replace /home/<user> with ~
+		char *home_prefix = "/home/";
+		size_t home_len = strlen(home_prefix) + strlen(username);
+		char *prompt_cwd;
+		if (strncmp(cwd, home_prefix, strlen(home_prefix)) == 0 &&
+			strncmp(cwd + strlen(home_prefix), username, strlen(username)) ==
+				0) {
+			prompt_cwd = malloc(strlen(cwd) - home_len +
+								2); // 1 for ~ and 1 for null terminator
+			snprintf(prompt_cwd, strlen(cwd) - home_len + 2, "~%s",
+					 cwd + home_len);
+		} else {
+			prompt_cwd = strdup(cwd);
+		}
+
+		// Print the prompt
+		printf("[%s@%s:%s] ", username, device_name, prompt_cwd);
 		char *line = lush_read_line();
 		printf("\n");
 		if (line == NULL || strlen(line) == 0) {
@@ -536,6 +533,7 @@ int main() {
 		for (int i = 0; args[i]; i++) {
 			free(args[i]);
 		}
+		free(cwd);
 		free(args);
 		free(commands);
 		free(line);

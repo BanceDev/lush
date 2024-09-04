@@ -20,9 +20,11 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
+#include <pwd.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 // global for checking if debug_mode is toggled
@@ -108,6 +110,48 @@ static int l_debug(lua_State *L) {
 		debug_mode = lua_toboolean(L, 1);
 	}
 	return 0;
+}
+
+static int l_cd(lua_State *L) {
+	bool rc;
+	uid_t uid = getuid();
+	struct passwd *pw = getpwuid(uid);
+	if (!pw) {
+		perror("retrieve home dir");
+		rc = false;
+		lua_pushboolean(L, rc);
+		return 1;
+	}
+
+	const char *newdir = luaL_checkstring(L, 1);
+	if (newdir == NULL) {
+		if (chdir(pw->pw_dir) != 0) {
+			perror("lush: cd");
+		}
+	} else {
+		char path[PATH_MAX];
+		char extended_path[PATH_MAX];
+		char *tilda = strchr(newdir, '~');
+		if (tilda) {
+			strcpy(path, pw->pw_dir);
+			strcat(path, tilda + 1);
+		} else {
+			strcpy(path, newdir);
+		}
+		char *exp_path = realpath(path, extended_path);
+		if (!exp_path) {
+			perror("realpath");
+			rc = false;
+			lua_pushboolean(L, rc);
+			return 1;
+		}
+		if (chdir(exp_path) != 0) {
+			perror("lush: cd");
+		}
+	}
+	rc = true;
+	lua_pushboolean(L, rc);
+	return 1;
 }
 
 // -- register Lua functions --
