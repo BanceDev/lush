@@ -21,6 +21,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include "lua.h"
 #include "lua_api.h"
 #include "lualib.h"
+#include <asm-generic/ioctls.h>
 #include <bits/time.h>
 #include <linux/limits.h>
 #include <pwd.h>
@@ -29,6 +30,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <termios.h>
@@ -169,11 +171,54 @@ static void print_prompt() {
 	free(cwd);
 }
 
+int get_terminal_width() {
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
+		perror("ioctl");
+		return -1;
+	}
+	return w.ws_col;
+}
+
 static void reprint_buffer(const char *buffer, int pos) {
-	printf("\r\033[K");
-	print_prompt();
+	char *username = getenv("USER");
+	char device_name[256];
+	gethostname(device_name, sizeof(device_name));
+	char *cwd = getcwd(NULL, 0);
+
+	// Replace /home/<user> with ~
+	char *home_prefix = "/home/";
+	size_t home_len = strlen(home_prefix) + strlen(username);
+	char *prompt_cwd;
+	if (strncmp(cwd, home_prefix, strlen(home_prefix)) == 0 &&
+		strncmp(cwd + strlen(home_prefix), username, strlen(username)) == 0) {
+		prompt_cwd = malloc(strlen(cwd) - home_len +
+							2); // 1 for ~ and 1 for null terminator
+		snprintf(prompt_cwd, strlen(cwd) - home_len + 2, "~%s", cwd + home_len);
+	} else {
+		prompt_cwd = strdup(cwd);
+	}
+
+	// Print the prompt
+	size_t prompt_len =
+		strlen(prompt_cwd) + strlen(username) + strlen(device_name) + 6;
+	char *prompt = (char *)malloc(prompt_len);
+	snprintf(prompt, prompt_len, "[%s@%s:%s]", username, device_name,
+			 prompt_cwd);
+
+	int width = get_terminal_width();
+	int num_lines = ((strlen(buffer) + strlen(prompt) + 1) / width) + 1;
+	for (int i = 0; i < num_lines; i++) {
+		printf("\r\033[K");
+		if (i > 0)
+			printf("\033[A");
+	}
+	printf("%s ", prompt);
 	printf("%s ", buffer);
 	printf("\033[%ldD", strlen(buffer) - pos + 1);
+
+	free(cwd);
+	free(prompt);
 }
 
 char *lush_read_line() {
