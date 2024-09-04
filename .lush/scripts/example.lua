@@ -49,3 +49,20 @@ lush.cd(cwd)
 if lush.exists("~/.lush/scripts/example.lua") then
 	print("example.lua exists")
 end
+
+-- isFile and isDir check if a path points to a file or a directory
+if lush.isFile("~/.lush/scripts/example.lua") then
+	print("example.lua is a file")
+end
+
+if not lush.isDirectory("~/.lush/scripts/example.lua") then
+	print("example.lua is not a directory")
+end
+
+-- you can also check if a file is readable/writeable
+if lush.isReadable("~/.lush/scripts/example.lua") then
+	print("example.lua is readable")
+end
+if lush.isWriteable("~/.lush/scripts/example.lua") then
+	print("example.lua is writeable")
+end
