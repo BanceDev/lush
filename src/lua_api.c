@@ -154,6 +154,46 @@ static int l_cd(lua_State *L) {
 	return 1;
 }
 
+static int l_exists(lua_State *L) {
+	bool rc;
+	uid_t uid = getuid();
+	struct passwd *pw = getpwuid(uid);
+	if (!pw) {
+		perror("retrieve home dir");
+		rc = false;
+		lua_pushboolean(L, rc);
+		return 1;
+	}
+
+	const char *check_item = luaL_checkstring(L, 1);
+	if (check_item == NULL) {
+		// passed nothing
+		rc = false;
+		lua_pushboolean(L, rc);
+		return 1;
+	} else {
+		char path[PATH_MAX];
+		char extended_path[PATH_MAX];
+		char *tilda = strchr(check_item, '~');
+		if (tilda) {
+			strcpy(path, pw->pw_dir);
+			strcat(path, tilda + 1);
+		} else {
+			strcpy(path, check_item);
+		}
+		char *exp_path = realpath(path, extended_path);
+		// if the path doesnt exist
+		if (!exp_path) {
+			rc = false;
+			lua_pushboolean(L, rc);
+			return 1;
+		}
+	}
+	rc = true;
+	lua_pushboolean(L, rc);
+	return 1;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -168,6 +208,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "debug");
 	lua_pushcfunction(L, l_cd);
 	lua_setfield(L, -2, "cd");
+	lua_pushcfunction(L, l_exists);
+	lua_setfield(L, -2, "exists");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }

@@ -44,3 +44,8 @@ print(cwd)
 lush.cd("~/.lush/scripts")
 lush.exec('cat "example.lua" | grep "hello" | sort | uniq')
 lush.cd(cwd)
+
+-- exists allows you to check if a file or directory exists
+if lush.exists("~/.lush/scripts/example.lua") then
+	print("example.lua exists")
+end
