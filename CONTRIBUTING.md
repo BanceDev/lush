@@ -1,0 +1,46 @@
+# Lunar Shell Contributing Guide
+
+Lunar Shell is a Free and Open Source Software project under the BSD license, it is a tool that is very young in its devlopment and is in continual need of features, fixes, and improvments. To ensure that the codebase is able to maintain a level of integrity, performance, and memory safety some guidelines are in place to ensure your success as a developer and the success of the software as a whole.
+
+## Code Style Guidelines
+
+- Tabs = 4 spaces
+- Use tailing brackets:
+```C
+if (x) {
+} else {
+}
+```
+- Always use precision specification for floating point values
+```C
+correct:
+float f = 0.5f;
+
+incorrect:
+float f = 0.5;
+```
+- All functions will start lowercase and use snake case
+- If a function name is public facing from a header file prefix it with lush_
+- Static functions are not to be prefixed
+```C
+void example_function() {}
+```
+- Additionally prefix functions categorically such that it is obvious what the function is for
+```C
+correct:
+void spr_draw();
+
+incorrect:
+void draw();
+```
+- Use the same snake case format for variables
+- Avoid unclear abbreviation, favor more explicit variable names
+- End all typedefs with _t
+- All defs and enums should be all caps snake case
+- End all recursive functions with _r to ensure safety
+- Default all variables to const until you need to mutate it
+- Make a new file for new game systems ex: sprites, music, ai, animations, etc.
+- Error check any function that can fail (malloc, fopen, etc.)
+- Use sized operations as often as possible to avoid buffer overflows ex: strncpy vs strcpy
+
+## PR Guidelines
