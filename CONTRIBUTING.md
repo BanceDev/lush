@@ -38,8 +38,6 @@ void draw();
 - End all typedefs with _t
 - All defs and enums should be all caps snake case
 - End all recursive functions with _r to ensure safety
-- Default all variables to const until you need to mutate it
-- Make a new file for new game systems ex: sprites, music, ai, animations, etc.
 - Error check any function that can fail (malloc, fopen, etc.)
 - Use sized operations as often as possible to avoid buffer overflows ex: strncpy vs strcpy
 
