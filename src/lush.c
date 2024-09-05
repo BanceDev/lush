@@ -237,12 +237,16 @@ char *lush_read_line() {
 			case 'C': // right arrow
 				if (pos < strlen(buffer)) {
 					pos++;
+					// if modifying text reset history
+					history_pos = -1;
 					reprint_buffer(buffer, &pos, history_pos);
 				}
 				break;
 			case 'D': // left arrow
 				if (pos > 0) {
 					pos--;
+					// if modifying text reset history
+					history_pos = -1;
 					reprint_buffer(buffer, &pos, history_pos);
 				}
 				break;
