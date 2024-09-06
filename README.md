@@ -1,5 +1,9 @@
 <p align="center">
   <img width="256" height=auto src="https://github.com/BanceDev/lush/blob/main/logo.png">
+  <br/>
+  <img src="https://img.shields.io/github/contributors/bancedev/lush" alt="contributors">
+  <img src="https://img.shields.io/github/license/bancedev/lush" alt="license">
+  <img src="https://img.shields.io/github/forks/bancedev/lush" alt="forks">
 </p>
 
 ---
