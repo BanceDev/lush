@@ -157,7 +157,7 @@ static int get_terminal_width() {
 	return w.ws_col;
 }
 
-static void reprint_buffer(char *buffer, int *pos, int history_pos) {
+static char *get_prompt() {
 	char *username = getenv("USER");
 	char device_name[256];
 	gethostname(device_name, sizeof(device_name));
@@ -183,13 +183,16 @@ static void reprint_buffer(char *buffer, int *pos, int history_pos) {
 	snprintf(prompt, prompt_len, "[%s@%s:%s]", username, device_name,
 			 prompt_cwd);
 
+	free(cwd);
+	return prompt;
+}
+
+static void reprint_buffer(char *buffer, int *last_lines, int *pos,
+						   int history_pos) {
+	char *prompt = get_prompt();
 	int width = get_terminal_width();
-	int num_lines = ((strlen(buffer) + strlen(prompt) + 1) / width) + 1;
-	for (int i = 0; i < num_lines; i++) {
-		printf("\r\033[K");
-		if (i > 0)
-			printf("\033[A");
-	}
+
+	// handle history before doing calculations
 	if (history_pos >= 0) {
 		char *history_line = lush_get_past_command(history_pos);
 		strncpy(buffer, history_line, BUFFER_SIZE);
@@ -198,13 +201,34 @@ static void reprint_buffer(char *buffer, int *pos, int history_pos) {
 		buffer[strlen(buffer) - 1] = '\0';
 		*pos = strlen(buffer);
 	}
+
+	int num_lines = ((strlen(buffer) + strlen(prompt) + 1) / width) + 1;
+	int cursor_pos = (strlen(prompt) + *pos + 1) % width;
+	int cursor_line = (strlen(prompt) + *pos + 1) / width + 1;
+	// move cursor down if it is up a number of lines first
+	if (num_lines - cursor_line > 0) {
+		printf("\033[%dB", num_lines - cursor_line);
+	}
+	for (int i = 0; i < *last_lines; i++) {
+		printf("\r\033[K");
+		if (i > 0)
+			printf("\033[A");
+	}
+	*last_lines = num_lines;
+
 	// ensure line is cleared before printing
 	printf("\r\033[K");
 	printf("%s ", prompt);
 	printf("%s ", buffer);
-	printf("\033[%ldD", strlen(buffer) - *pos + 1);
 
-	free(cwd);
+	// move cursor up and to the right to be in correct position
+	if (cursor_pos > 0)
+		printf("\r\033[%dC", cursor_pos);
+	else
+		printf("\r");
+	if (num_lines > 1 && (num_lines - cursor_line) > 0)
+		printf("\033[%dA", num_lines - cursor_line);
+
 	free(prompt);
 }
 
@@ -213,6 +237,8 @@ char *lush_read_line() {
 	char *buffer = (char *)calloc(BUFFER_SIZE, sizeof(char));
 	int pos = 0;
 	int history_pos = -1;
+	int last_lines = 1;
+	char last_command;
 	int c;
 
 	// init buffer and make raw mode
@@ -225,29 +251,44 @@ char *lush_read_line() {
 			getchar();	   // skip [
 			switch (getchar()) {
 			case 'A': // up arrow
-				reprint_buffer(buffer, &pos, ++history_pos);
+				reprint_buffer(buffer, &last_lines, &pos, ++history_pos);
 				break;
 			case 'B': // down arrow
-				reprint_buffer(buffer, &pos, --history_pos);
+				reprint_buffer(buffer, &last_lines, &pos, --history_pos);
 				if (history_pos < 0)
 					history_pos = 0;
 				break;
 			case 'C': // right arrow
+			{
+				int width = get_terminal_width();
+				char *prompt = get_prompt();
+				if ((strlen(prompt) + pos) % width == width - 2) {
+					printf("\033[B");
+				}
 				if (pos < strlen(buffer)) {
 					pos++;
 					// if modifying text reset history
 					history_pos = -1;
-					reprint_buffer(buffer, &pos, history_pos);
+					reprint_buffer(buffer, &last_lines, &pos, history_pos);
 				}
-				break;
+				free(prompt);
+			} break;
 			case 'D': // left arrow
+			{
+				int width = get_terminal_width();
+				char *prompt = get_prompt();
+				if ((strlen(prompt) + pos) % width == width - 1) {
+					printf("\033[A");
+				}
+
 				if (pos > 0) {
 					pos--;
 					// if modifying text reset history
 					history_pos = -1;
-					reprint_buffer(buffer, &pos, history_pos);
+					reprint_buffer(buffer, &last_lines, &pos, history_pos);
 				}
-				break;
+				free(prompt);
+			} break;
 			case '3': // delete
 				if (getchar() == '~') {
 					if (pos < strlen(buffer)) {
@@ -255,7 +296,7 @@ char *lush_read_line() {
 								strlen(&buffer[pos + 1]) + 1);
 						// if modifying text reset history
 						history_pos = -1;
-						reprint_buffer(buffer, &pos, history_pos);
+						reprint_buffer(buffer, &last_lines, &pos, history_pos);
 					}
 				}
 				break;
@@ -269,11 +310,13 @@ char *lush_read_line() {
 				pos--;
 				// if modifying text reset history
 				history_pos = -1;
-				reprint_buffer(buffer, &pos, history_pos);
+				reprint_buffer(buffer, &last_lines, &pos, history_pos);
 			}
 		} else if (c == '\n') {
 			// if modifying text reset history
 			history_pos = -1;
+			pos = strlen(buffer);
+			reprint_buffer(buffer, &last_lines, &pos, history_pos);
 			break; // submit the command
 		} else {
 			if (pos < BUFFER_SIZE - 1) {
@@ -285,7 +328,7 @@ char *lush_read_line() {
 
 				// if modifying text reset history
 				history_pos = -1;
-				reprint_buffer(buffer, &pos, history_pos);
+				reprint_buffer(buffer, &last_lines, &pos, history_pos);
 			}
 		}
 	}
