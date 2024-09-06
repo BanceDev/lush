@@ -27,7 +27,7 @@ To update Lunar Shell pull the repo and run the install script again.
 ## Lua Shell Scripting
 
 <p align="center">
-  <img width="256" height=auto src="https://github.com/BanceDev/lush/blob/main/demo.png">
+  <img width="512" height=auto src="https://github.com/BanceDev/lush/blob/main/demo.png">
 </p>
 
 With the robust and ever growing Lua API that Lunar Shell has builtin, not only can you create powerful shell scripts to automate your workflow but also reap the benefits of having an easy to understand scripting language embedded into your command line.
