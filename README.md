@@ -14,7 +14,7 @@ Lunar Shell (lush) is an open source unix shell with a single goal in mind. That
 
 ## Compiling/Installation
 
-Clone the repo and run the install script.
+Clone the repo and run the install script. This will also automatically set your system shell to Lunar Shell, you will need to log out and back in for the changes to take effect.
 
 ```
 git clone https://github.com/BanceDev/lush.git
@@ -22,7 +22,19 @@ cd lush
 sh install.sh
 ```
 
-For future compiles just run ```make``` from the root directory. If you change the premake5.lua file rebuild the makefiles with ```premake5 gmake```.
+To update Lunar Shell pull the repo and run the install script again.
+
+## Lua Shell Scripting
+
+<p align="center">
+  <img width="256" height=auto src="https://github.com/BanceDev/lush/blob/main/demo.png">
+</p>
+
+With the robust and ever growing Lua API that Lunar Shell has builtin, not only can you create powerful shell scripts to automate your workflow but also reap the benefits of having an easy to understand scripting language embedded into your command line.
+
+To run a Lua script with Lunar Shell just type the name of the lua file you want to run followed by any arguments you want to pass to the script. Lunar Shell will automatically search the current working directory as well as the ~/.lush/scripts directory and then execute the file if it locates a match.
+
+Lunar Shell also entirely supports the Lua interpreter, running on version 5.4. This means you can also just run Lua programs you write like native apps in your shell, no need to make any calls to the API.
 
 ## Contributing
 
