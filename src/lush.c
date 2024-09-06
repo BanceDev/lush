@@ -148,7 +148,7 @@ static void reset_terminal_mode(struct termios *orig_termios) {
 	tcsetattr(STDIN_FILENO, TCSANOW, orig_termios);
 }
 
-int get_terminal_width() {
+static int get_terminal_width() {
 	struct winsize w;
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
 		perror("ioctl");
@@ -225,15 +225,13 @@ char *lush_read_line() {
 			getchar();	   // skip [
 			switch (getchar()) {
 			case 'A': // up arrow
-			{
 				reprint_buffer(buffer, &pos, ++history_pos);
-			} break;
+				break;
 			case 'B': // down arrow
-			{
 				reprint_buffer(buffer, &pos, --history_pos);
 				if (history_pos < 0)
 					history_pos = 0;
-			} break;
+				break;
 			case 'C': // right arrow
 				if (pos < strlen(buffer)) {
 					pos++;
