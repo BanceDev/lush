@@ -195,11 +195,13 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 	// handle history before doing calculations
 	if (history_pos >= 0) {
 		char *history_line = lush_get_past_command(history_pos);
-		strncpy(buffer, history_line, BUFFER_SIZE);
-		free(history_line);
-		// remove newline from buffer
-		buffer[strlen(buffer) - 1] = '\0';
-		*pos = strlen(buffer);
+		if (history_line != NULL) {
+			strncpy(buffer, history_line, BUFFER_SIZE);
+			free(history_line);
+			// remove newline from buffer
+			buffer[strlen(buffer) - 1] = '\0';
+			*pos = strlen(buffer);
+		}
 	}
 
 	int num_lines = ((strlen(buffer) + strlen(prompt) + 1) / width) + 1;
