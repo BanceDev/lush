@@ -210,6 +210,10 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 	// move cursor down if it is up a number of lines first
 	if (num_lines - cursor_line > 0) {
 		printf("\033[%dB", num_lines - cursor_line);
+		// compensate for if the we have just filled a line
+		if ((strlen(buffer) + strlen(prompt) + 1) % width == 0) {
+			printf("\033[A");
+		}
 	}
 	for (int i = 0; i < *last_lines; i++) {
 		printf("\r\033[K");
@@ -327,7 +331,13 @@ char *lush_read_line() {
 						strlen(&buffer[pos]) + 1);
 				buffer[pos] = c;
 				pos++;
-
+				// handle edge case where cursor should be moved down
+				int width = get_terminal_width();
+				char *prompt = get_prompt();
+				if ((strlen(prompt) + pos) % width == width - 1 &&
+					pos < strlen(buffer)) {
+					printf("\033[B");
+				}
 				// if modifying text reset history
 				history_pos = -1;
 				reprint_buffer(buffer, &last_lines, &pos, history_pos);
