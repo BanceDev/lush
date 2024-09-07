@@ -34,7 +34,7 @@ elif [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]; then
     fi
 else
     echo "Your linux distro is not supported currently."
-    echo "You need to manually install those packages: exiftool, jq, glfw"
+    echo "You need to manually install these packages: lua and your distro's lua dev package"
 fi
 
 PREMAKE_VERSION="5.0.0-beta2"
