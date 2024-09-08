@@ -33,7 +33,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 static bool debug_mode = false;
 
 // -- script execution --
-void lua_load_script(lua_State *L, const char *script) {
+void lua_load_script(lua_State *L, const char *script, char **args) {
 	char script_path[512];
 	// check if script is in the current directory
 	if (access(script, F_OK) == 0) {
@@ -54,6 +54,16 @@ void lua_load_script(lua_State *L, const char *script) {
 			fprintf(stderr, "[C] HOME directory is not set.\n");
 			return;
 		}
+	}
+	// add args global if args were passed
+	if (args[0] != NULL) {
+		lua_newtable(L);
+		for (int i = 0; args[i]; i++) {
+			lua_pushstring(L, args[i]);
+			// i + 1 since Lua is 1 based indexed
+			lua_rawseti(L, -2, i + 1);
+		}
+		lua_setglobal(L, "args");
 	}
 	// if we got here the file exists
 	if (luaL_dofile(L, script_path) != LUA_OK) {

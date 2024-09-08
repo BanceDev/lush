@@ -23,6 +23,15 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 print("Welcome to Lunar Shell scripting")
 
+-- command line args can be passed to lua programs
+-- done like so: example.lua arg1 arg2 ...
+-- args can be read using the global args tables
+if args ~= nil then
+	for i = 1, #args do
+		print(args[i])
+	end
+end
+
 -- exec can be used to run any command line prompt
 -- this method is much more native than using os.execute and is the recommended function
 -- it also returns a boolean on if the command executed successfully

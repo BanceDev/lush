@@ -127,8 +127,14 @@ int lush_time(lua_State *L, char ***args) {
 
 int lush_lua(lua_State *L, char ***args) {
 	// run the lua file given
-	lua_load_script(L, args[0][0]);
+	const char *script = args[0][0];
+	// move args forward to any command line args
+	args[0]++;
 
+	lua_load_script(L, script, args[0]);
+
+	// return pointer back to lua file
+	args[0]--;
 	return 1;
 }
 
