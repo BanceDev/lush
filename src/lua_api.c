@@ -248,6 +248,30 @@ static int l_is_writeable(lua_State *L) {
 	return 1;
 }
 
+static int l_last_history(lua_State *L) {
+	char *history_element = lush_get_past_command(0);
+	// remove the newline character
+	history_element[strlen(history_element) - 1] = '\0';
+	lua_pushstring(L, history_element);
+	free(history_element);
+	return 1;
+}
+
+static int l_get_history(lua_State *L) {
+	int i = luaL_checkinteger(L, 1);
+
+	// using 1 based indexing to be aligned with Lua
+	if (i < 1)
+		return 0;
+
+	char *history_element = lush_get_past_command(i - 1);
+	// remove the newline character
+	history_element[strlen(history_element) - 1] = '\0';
+	lua_pushstring(L, history_element);
+	free(history_element);
+	return 1;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -272,6 +296,10 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "isReadable");
 	lua_pushcfunction(L, l_is_writeable);
 	lua_setfield(L, -2, "isWriteable");
+	lua_pushcfunction(L, l_last_history);
+	lua_setfield(L, -2, "lastHistory");
+	lua_pushcfunction(L, l_get_history);
+	lua_setfield(L, -2, "getHistory");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }

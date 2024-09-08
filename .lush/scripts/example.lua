@@ -27,6 +27,7 @@ print("Welcome to Lunar Shell scripting")
 -- done like so: example.lua arg1 arg2 ...
 -- args can be read using the global args tables
 if args ~= nil then
+	print("Printing args:")
 	for i = 1, #args do
 		print(args[i])
 	end
@@ -75,3 +76,9 @@ end
 if lush.isWriteable("~/.lush/scripts/example.lua") then
 	print("example.lua is writeable")
 end
+
+-- you can fetch the most recently executed command in history
+print("Most recent history: " .. lush.lastHistory())
+
+-- you can also fetch history at a certain index in the past (1 being most recent)
+print("Most recent history indexed: " .. lush.getHistory(1))
