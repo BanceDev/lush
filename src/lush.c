@@ -567,7 +567,14 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 	return lush_execute_pipeline(commands, num_commands);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+	// check if the --version arg was passed
+	if (argc > 1 && strcmp(argv[1], "--version") == 0) {
+#ifdef LUSH_VERSION
+		printf("Lunar Shell, version %s\n", LUSH_VERSION);
+#endif
+		return 0;
+	}
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
 	lua_register_api(L);
@@ -628,4 +635,5 @@ int main() {
 		free(line);
 	}
 	lua_close(L);
+	return 0;
 }
