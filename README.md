@@ -38,7 +38,7 @@ Lunar Shell also entirely supports the Lua interpreter, running on version 5.4. 
 
 ## Using the Lunar Shell Lua API
 
-Using the Lunar Shell API to make your own scripts is super simple. Upon installing Lunar Shell you can find an example script located at ```~/.local/scripts/example.lua``` this script acts as a self docummenting guide on how to use the API. Every function that exists in the API can be found in the example script along with helpful comments to explain what the functions do.
+Using the Lunar Shell API to make your own scripts is super simple. Upon installing Lunar Shell you can find an example script located at ```~/.lush/scripts/example.lua``` this script acts as a self documenting guide on how to use the API. Every function that exists in the API can be found in the example script, along with helpful comments to explain what the functions do.
 
 ## Contributing
 
