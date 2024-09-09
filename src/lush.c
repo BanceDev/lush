@@ -284,6 +284,7 @@ size_t get_stripped_length(const char *str) {
 }
 static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 						   int history_pos) {
+	static size_t old_buffer_len = 0;
 	char *prompt = get_prompt();
 	int width = get_terminal_width();
 	size_t prompt_length = get_stripped_length(prompt);
@@ -305,15 +306,29 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 	// move cursor down if it is up a number of lines first
 	if (num_lines - cursor_line > 0) {
 		printf("\033[%dB", num_lines - cursor_line);
-		// compensate for if the we have just filled a line
-		if ((strlen(buffer) + prompt_length + 1) % width == 0) {
+		// compensate for if we have just filled a line
+		if ((strlen(buffer) + prompt_length + 1) % width == 0 &&
+			old_buffer_len < strlen(buffer)) {
 			printf("\033[A");
 		}
+		// compense for if we have just emptied a line
+		if ((strlen(buffer) + prompt_length + 1) % width == width - 1 &&
+			old_buffer_len > strlen(buffer)) {
+			printf("\033[B");
+		}
 	}
-	for (int i = 0; i < *last_lines; i++) {
-		printf("\r\033[K");
-		if (i > 0)
-			printf("\033[A");
+	if (old_buffer_len < strlen(buffer) || history_pos >= 0) {
+		for (int i = 0; i < *last_lines; i++) {
+			printf("\r\033[K");
+			if (i > 0)
+				printf("\033[A");
+		}
+	} else {
+		for (int i = 0; i < num_lines; i++) {
+			printf("\r\033[K");
+			if (i > 0)
+				printf("\033[A");
+		}
 	}
 	*last_lines = num_lines;
 
@@ -331,6 +346,7 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 		printf("\033[%dA", num_lines - cursor_line);
 
 	free(prompt);
+	old_buffer_len = strlen(buffer);
 }
 
 char *lush_read_line() {
@@ -415,7 +431,7 @@ char *lush_read_line() {
 				int width = get_terminal_width();
 				char *prompt = get_prompt();
 				size_t prompt_length = get_stripped_length(prompt);
-				if ((prompt_length + pos) % width == width - 2 &&
+				if ((prompt_length + pos + 1) % width == width - 1 &&
 					pos < strlen(buffer)) {
 					printf("\033[A");
 				}
