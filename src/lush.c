@@ -411,6 +411,14 @@ char *lush_read_line() {
 				memmove(&buffer[pos - 1], &buffer[pos],
 						strlen(&buffer[pos]) + 1);
 				pos--;
+				// handle edge case where cursor should be moved down
+				int width = get_terminal_width();
+				char *prompt = get_prompt();
+				size_t prompt_length = get_stripped_length(prompt);
+				if ((prompt_length + pos) % width == width - 2 &&
+					pos < strlen(buffer)) {
+					printf("\033[A");
+				}
 				// if modifying text reset history
 				history_pos = -1;
 				reprint_buffer(buffer, &last_lines, &pos, history_pos);
