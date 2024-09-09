@@ -363,7 +363,8 @@ char *lush_read_line() {
 			{
 				int width = get_terminal_width();
 				char *prompt = get_prompt();
-				if ((strlen(prompt) + pos) % width == width - 2) {
+				size_t prompt_length = get_stripped_length(prompt);
+				if ((prompt_length + pos) % width == width - 2) {
 					printf("\033[B");
 				}
 				if (pos < strlen(buffer)) {
@@ -378,7 +379,8 @@ char *lush_read_line() {
 			{
 				int width = get_terminal_width();
 				char *prompt = get_prompt();
-				if ((strlen(prompt) + pos) % width == width - 1) {
+				size_t prompt_length = get_stripped_length(prompt);
+				if ((prompt_length + pos) % width == width - 1) {
 					printf("\033[A");
 				}
 
@@ -429,7 +431,8 @@ char *lush_read_line() {
 				// handle edge case where cursor should be moved down
 				int width = get_terminal_width();
 				char *prompt = get_prompt();
-				if ((strlen(prompt) + pos) % width == width - 1 &&
+				size_t prompt_length = get_stripped_length(prompt);
+				if ((prompt_length + pos) % width == width - 1 &&
 					pos < strlen(buffer)) {
 					printf("\033[B");
 				}
