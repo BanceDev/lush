@@ -29,7 +29,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <sys/stat.h>
 #include <unistd.h>
 
-// global for checking if debug_mode is toggled
+// globals
 static bool debug_mode = false;
 
 // -- script execution --
@@ -56,7 +56,7 @@ void lua_load_script(lua_State *L, const char *script, char **args) {
 		}
 	}
 	// add args global if args were passed
-	if (args[0] != NULL) {
+	if (args != NULL && args[0] != NULL) {
 		lua_newtable(L);
 		for (int i = 0; args[i]; i++) {
 			lua_pushstring(L, args[i]);
@@ -77,6 +77,12 @@ void lua_load_script(lua_State *L, const char *script, char **args) {
 		fprintf(stderr, "[C] Error loading script: %s\n", error_msg);
 		lua_pop(L, 1); // remove error from stack
 	}
+}
+
+void lua_run_init(lua_State *L) {
+	char script_path[64];
+	snprintf(script_path, sizeof(script_path), ".lush/%s", "init.lua");
+	lua_load_script(L, script_path, NULL);
 }
 
 // -- C funtions --
@@ -284,9 +290,38 @@ static int l_get_env(lua_State *L) {
 	return 1;
 }
 
-static int l_put_env(lua_State *L) {
+static int l_set_env(lua_State *L) {
+	const char *env_name = luaL_checkstring(L, 1);
+	const char *env_value = luaL_checkstring(L, 2);
+	setenv(env_name, env_value, 1);
+	return 0;
+}
+
+static int l_unset_env(lua_State *L) {
 	const char *env = luaL_checkstring(L, 1);
-	putenv((char *)env);
+	unsetenv(env);
+	return 0;
+}
+
+static int l_set_prompt(lua_State *L) {
+	const char *format = luaL_checkstring(L, 1);
+	if (format == NULL) {
+		perror("string format not passed");
+		return 0;
+	}
+
+	// free old prompt format if necessary
+	if (prompt_format) {
+		free(prompt_format);
+	}
+
+	prompt_format = malloc(strlen(format) + 1);
+
+	if (prompt_format) {
+		strcpy(prompt_format, format);
+	} else {
+		perror("malloc failed");
+	}
 	return 0;
 }
 
@@ -320,8 +355,12 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "getHistory");
 	lua_pushcfunction(L, l_get_env);
 	lua_setfield(L, -2, "getenv");
-	lua_pushcfunction(L, l_put_env);
-	lua_setfield(L, -2, "putenv");
+	lua_pushcfunction(L, l_set_env);
+	lua_setfield(L, -2, "setenv");
+	lua_pushcfunction(L, l_unset_env);
+	lua_setfield(L, -2, "unsetenv");
+	lua_pushcfunction(L, l_set_prompt);
+	lua_setfield(L, -2, "setPrompt");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }

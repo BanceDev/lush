@@ -21,6 +21,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <lua.h>
 
 void lua_load_script(lua_State *L, const char *script, char **args);
+void lua_run_init(lua_State *L);
 void lua_register_api(lua_State *L);
 
 #endif

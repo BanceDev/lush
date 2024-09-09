@@ -40,6 +40,9 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #define BUFFER_SIZE 1024
 
+// initialize prompt format
+char *prompt_format = NULL;
+
 // -- builtin functions --
 char *builtin_strs[] = {"cd", "help", "exit", "time"};
 
@@ -163,10 +166,67 @@ static int get_terminal_width() {
 	return w.ws_col;
 }
 
+static size_t get_prompt_len(const char *format, const char *username,
+							 const char *hostname, const char *cwd) {
+	size_t prompt_len = 0;
+
+	while (*format) {
+		if (strncmp(format, "%u", 2) == 0) {
+			prompt_len += strlen(username);
+			format += 2;
+		} else if (strncmp(format, "%h", 2) == 0) {
+			prompt_len += strlen(hostname);
+			format += 2;
+		} else if (strncmp(format, "%w", 2) == 0) {
+			prompt_len += strlen(cwd);
+			format += 2;
+		} else {
+			prompt_len++;
+			format++;
+		}
+	}
+	return prompt_len;
+}
+
+static char *format_prompt_string(const char *input, const char *username,
+								  const char *hostname, const char *cwd) {
+	// Calculate the size of the new string
+	size_t new_size = get_prompt_len(input, username, hostname, cwd) + 1;
+
+	// Allocate memory for the new string
+	char *result = (char *)malloc(new_size);
+	if (!result) {
+		return NULL; // Handle memory allocation failure
+	}
+
+	// Replace placeholders in the input string and build the result string
+	char *dest = result;
+	while (*input) {
+		if (strncmp(input, "%u", 2) == 0) {
+			strcpy(dest, username);
+			dest += strlen(username);
+			input += 2;
+		} else if (strncmp(input, "%h", 2) == 0) {
+			strcpy(dest, hostname);
+			dest += strlen(hostname);
+			input += 2;
+		} else if (strncmp(input, "%w", 2) == 0) {
+			strcpy(dest, cwd);
+			dest += strlen(cwd);
+			input += 2;
+		} else {
+			*dest++ = *input++;
+		}
+	}
+
+	*dest = '\0'; // Null-terminate the result string
+	return result;
+}
+
 static char *get_prompt() {
 	char *username = getenv("USER");
-	char device_name[256];
-	gethostname(device_name, sizeof(device_name));
+	char hostname[256];
+	gethostname(hostname, sizeof(hostname));
 	char *cwd = getcwd(NULL, 0);
 
 	// Replace /home/<user> with ~
@@ -182,12 +242,20 @@ static char *get_prompt() {
 		prompt_cwd = strdup(cwd);
 	}
 
-	// Print the prompt
-	size_t prompt_len =
-		strlen(prompt_cwd) + strlen(username) + strlen(device_name) + 6;
-	char *prompt = (char *)malloc(prompt_len);
-	snprintf(prompt, prompt_len, "[%s@%s:%s]", username, device_name,
-			 prompt_cwd);
+	// get the prompt if no format in init.lua
+	if (prompt_format == NULL) {
+		size_t prompt_len =
+			strlen(prompt_cwd) + strlen(username) + strlen(hostname) + 6;
+		char *prompt = (char *)malloc(prompt_len);
+		snprintf(prompt, prompt_len, "[%s@%s:%s]", username, hostname,
+				 prompt_cwd);
+		free(cwd);
+		return prompt;
+	}
+
+	// get formatted prompt
+	char *prompt =
+		format_prompt_string(prompt_format, username, hostname, prompt_cwd);
 
 	free(cwd);
 	return prompt;
@@ -581,9 +649,11 @@ int main(int argc, char *argv[]) {
 #endif
 		return 0;
 	}
+	// init lua state
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
 	lua_register_api(L);
+	lua_run_init(L);
 	// eat ^C in main
 	struct sigaction sa;
 	sa.sa_handler = SIG_IGN;
@@ -594,28 +664,9 @@ int main(int argc, char *argv[]) {
 	int status = 0;
 	while (true) {
 		// Prompt
-		char *username = getenv("USER");
-		char device_name[256];
-		gethostname(device_name, sizeof(device_name));
-		char *cwd = getcwd(NULL, 0);
+		char *prompt = get_prompt();
 
-		// Replace /home/<user> with ~
-		char *home_prefix = "/home/";
-		size_t home_len = strlen(home_prefix) + strlen(username);
-		char *prompt_cwd;
-		if (strncmp(cwd, home_prefix, strlen(home_prefix)) == 0 &&
-			strncmp(cwd + strlen(home_prefix), username, strlen(username)) ==
-				0) {
-			prompt_cwd = malloc(strlen(cwd) - home_len +
-								2); // 1 for ~ and 1 for null terminator
-			snprintf(prompt_cwd, strlen(cwd) - home_len + 2, "~%s",
-					 cwd + home_len);
-		} else {
-			prompt_cwd = strdup(cwd);
-		}
-
-		// Print the prompt
-		printf("[%s@%s:%s] ", username, device_name, prompt_cwd);
+		printf("%s ", prompt);
 		char *line = lush_read_line();
 		lush_push_history(line);
 		printf("\n");
@@ -635,11 +686,14 @@ int main(int argc, char *argv[]) {
 			free(args[i]);
 		}
 		// add last line to history
-		free(cwd);
+		free(prompt);
 		free(args);
 		free(commands);
 		free(line);
 	}
 	lua_close(L);
+	if (prompt_format != NULL)
+		free(prompt_format);
+
 	return 0;
 }

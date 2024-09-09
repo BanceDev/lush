@@ -84,7 +84,10 @@ print("Most recent history: " .. lush.lastHistory())
 print("Most recent history indexed: " .. lush.getHistory(1))
 
 -- you can set environment variables using putenv
-lush.putenv("EXAMPLE=Lunar Shell Example")
+lush.setenv("EXAMPLE", "Lunar Shell Example")
 
 -- you can get an environment variable using getenv
 print("Value of EXAMPLE: " .. lush.getenv("EXAMPLE"))
+
+-- you can unset an environment variable with unsetenv
+lush.unsetenv("EXAMPLE")
