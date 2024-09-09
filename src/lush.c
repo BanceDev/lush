@@ -260,12 +260,33 @@ static char *get_prompt() {
 	free(cwd);
 	return prompt;
 }
+size_t get_stripped_length(const char *str) {
+	size_t len = 0;
+	size_t i = 0;
 
+	while (str[i] != '\0') {
+		if (str[i] == '\033' && str[i + 1] == '[') {
+			// Skip over the escape sequence
+			while (str[i] != 'm' && str[i] != '\0') {
+				i++;
+			}
+			// Include 'm' character to end the escape sequence
+			if (str[i] == 'm') {
+				i++;
+			}
+		} else {
+			len++;
+			i++;
+		}
+	}
+
+	return len;
+}
 static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 						   int history_pos) {
 	char *prompt = get_prompt();
 	int width = get_terminal_width();
-
+	size_t prompt_length = get_stripped_length(prompt);
 	// handle history before doing calculations
 	if (history_pos >= 0) {
 		char *history_line = lush_get_past_command(history_pos);
@@ -278,14 +299,14 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 		}
 	}
 
-	int num_lines = ((strlen(buffer) + strlen(prompt) + 1) / width) + 1;
-	int cursor_pos = (strlen(prompt) + *pos + 1) % width;
-	int cursor_line = (strlen(prompt) + *pos + 1) / width + 1;
+	int num_lines = ((strlen(buffer) + prompt_length + 1) / width) + 1;
+	int cursor_pos = (prompt_length + *pos + 1) % width;
+	int cursor_line = (prompt_length + *pos + 1) / width + 1;
 	// move cursor down if it is up a number of lines first
 	if (num_lines - cursor_line > 0) {
 		printf("\033[%dB", num_lines - cursor_line);
 		// compensate for if the we have just filled a line
-		if ((strlen(buffer) + strlen(prompt) + 1) % width == 0) {
+		if ((strlen(buffer) + prompt_length + 1) % width == 0) {
 			printf("\033[A");
 		}
 	}
