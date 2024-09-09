@@ -18,12 +18,14 @@ else
 	links({ "lua" })
 end
 
-includedirs({ lua_inc_path })
+includedirs({ lua_inc_path, "lib/hashmap" })
 libdirs({ lua_lib_path })
 
 files({
 	"src/**.h",
 	"src/**.c",
+	"lib/hashmap/**.h",
+	"lib/hashmap/**.c",
 })
 defines({ 'LUSH_VERSION="0.0.1"' })
 

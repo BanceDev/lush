@@ -16,6 +16,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
 #include "lush.h"
+#include "hashmap.h"
 #include "help.h"
 #include "history.h"
 #include "lauxlib.h"
@@ -42,6 +43,20 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 // initialize prompt format
 char *prompt_format = NULL;
+
+// -- aliasing --
+hashmap_t *aliases = NULL;
+
+void lush_add_alias(const char *alias, const char *command) {
+	// make a new map if one doesnt exist
+	if (aliases == NULL) {
+		aliases = hm_new_hashmap();
+	}
+
+	hm_set(aliases, (char *)alias, (char *)command);
+}
+
+char *lush_get_alias(char *alias) { return hm_get(aliases, alias); }
 
 // -- builtin functions --
 char *builtin_strs[] = {"cd", "help", "exit", "time"};
@@ -196,7 +211,8 @@ static char *format_prompt_string(const char *input, const char *username,
 	// Allocate memory for the new string
 	char *result = (char *)malloc(new_size);
 	if (!result) {
-		return NULL; // Handle memory allocation failure
+		perror("malloc failed");
+		return NULL;
 	}
 
 	// Replace placeholders in the input string and build the result string
@@ -260,6 +276,7 @@ static char *get_prompt() {
 	free(cwd);
 	return prompt;
 }
+
 size_t get_stripped_length(const char *str) {
 	size_t len = 0;
 	size_t i = 0;
@@ -469,6 +486,60 @@ char *lush_read_line() {
 
 	reset_terminal_mode(&orig_termios);
 	return buffer;
+}
+
+// -- static helper for resolving aliases --
+static char *lush_resolve_aliases(char *line) {
+	// Allocate memory for the new string
+	char *result = (char *)malloc(BUFFER_SIZE);
+	if (!result) {
+		perror("malloc failed");
+		return NULL;
+	}
+
+	// Create a copy of the input line for tokenization
+	char *line_copy = strdup(line);
+	if (!line_copy) {
+		perror("strdup failed");
+		free(result);
+		return NULL;
+	}
+
+	// Start building the result string
+	char *dest = result;
+	char *arg = strtok(line_copy, " ");
+	while (arg != NULL) {
+		// Check shell aliases
+		if (aliases != NULL) {
+			char *alias = hm_get(aliases, arg);
+			if (alias != NULL) {
+				// Replace alias
+				strcpy(dest, alias);
+				dest += strlen(alias);
+			} else {
+				// No alias found, use the original token
+				strcpy(dest, arg);
+				dest += strlen(arg);
+			}
+		} else {
+			// No aliases set, just use the original token
+			strcpy(dest, arg);
+			dest += strlen(arg);
+		}
+
+		// Add a space after each token (if it's not the last one)
+		arg = strtok(NULL, " ");
+		if (arg != NULL) {
+			*dest++ = ' ';
+		}
+	}
+
+	*dest = '\0'; // Null-terminate the result string
+
+	// Clean up
+	free(line_copy);
+
+	return result;
 }
 
 char **lush_split_pipes(char *line) {
@@ -685,7 +756,6 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 			return ((*builtin_func[i])(L, commands));
 		}
 	}
-
 	return lush_execute_pipeline(commands, num_commands);
 }
 
@@ -722,7 +792,8 @@ int main(int argc, char *argv[]) {
 			free(line);
 			continue;
 		}
-		char **commands = lush_split_pipes(line);
+		char *expanded_line = lush_resolve_aliases(line);
+		char **commands = lush_split_pipes(expanded_line);
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
@@ -737,11 +808,13 @@ int main(int argc, char *argv[]) {
 		free(prompt);
 		free(args);
 		free(commands);
+		free(expanded_line);
 		free(line);
 	}
 	lua_close(L);
 	if (prompt_format != NULL)
 		free(prompt_format);
-
+	if (aliases != NULL)
+		free(aliases);
 	return 0;
 }

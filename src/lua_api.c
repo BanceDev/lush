@@ -325,6 +325,13 @@ static int l_set_prompt(lua_State *L) {
 	return 0;
 }
 
+static int l_alias(lua_State *L) {
+	const char *alias = luaL_checkstring(L, 1);
+	const char *command = luaL_checkstring(L, 2);
+	lush_add_alias(alias, command);
+	return 0;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -361,6 +368,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "unsetenv");
 	lua_pushcfunction(L, l_set_prompt);
 	lua_setfield(L, -2, "setPrompt");
+	lua_pushcfunction(L, l_alias);
+	lua_setfield(L, -2, "alias");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }

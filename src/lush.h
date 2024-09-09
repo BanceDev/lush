@@ -20,6 +20,9 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #include <lua.h>
 
+void lush_add_alias(const char *alias, const char *command);
+char *lush_get_alias(char *alias);
+
 int lush_cd(lua_State *L, char ***args);
 int lush_help(lua_State *L, char ***args);
 int lush_exit(lua_State *L, char ***args);

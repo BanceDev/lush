@@ -25,11 +25,10 @@ lush.setenv("PATH", path)
 -- the prompt can be customized here too
 -- %u is username, %h is hostname, %w is current working directory
 lush.setPrompt("[%u@%h: %w]")
--- any global functions that accept either no parameters or just an array of args
--- will be read in and stored as built in commands for the shell
-function my_command(args)
-	print("my custom command")
-end
+
+-- aliases can be defined using the alias method by passing the alias name
+-- and the command to execute with the alias
+lush.alias("h", "help")
 
 -- all functions from the Lunar Shell Lua API are available to you to
 -- customize your startup however you want
