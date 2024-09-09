@@ -66,11 +66,16 @@ void lua_load_script(lua_State *L, const char *script, char **args) {
 		lua_setglobal(L, "args");
 	}
 	// if we got here the file exists
-	if (luaL_dofile(L, script_path) != LUA_OK) {
-		printf("[C] Error reading script\n");
-		luaL_error(L, "Error: %s\n", lua_tostring(L, -1));
-		// remove error from stack
-		lua_pop(L, 1);
+	if (luaL_loadfile(L, script_path) == LUA_OK) {
+		if (lua_pcall(L, 0, LUA_MULTRET, 0) != LUA_OK) {
+			const char *error_msg = lua_tostring(L, -1);
+			fprintf(stderr, "[C] Error executing script: %s\n", error_msg);
+			lua_pop(L, 1); // remove error from stack
+		}
+	} else {
+		const char *error_msg = lua_tostring(L, -1);
+		fprintf(stderr, "[C] Error loading script: %s\n", error_msg);
+		lua_pop(L, 1); // remove error from stack
 	}
 }
 
@@ -272,6 +277,19 @@ static int l_get_history(lua_State *L) {
 	return 1;
 }
 
+static int l_get_env(lua_State *L) {
+	const char *env = luaL_checkstring(L, 1);
+	char *env_val = getenv(env);
+	lua_pushstring(L, env_val);
+	return 1;
+}
+
+static int l_put_env(lua_State *L) {
+	const char *env = luaL_checkstring(L, 1);
+	putenv((char *)env);
+	return 0;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -300,6 +318,10 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "lastHistory");
 	lua_pushcfunction(L, l_get_history);
 	lua_setfield(L, -2, "getHistory");
+	lua_pushcfunction(L, l_get_env);
+	lua_setfield(L, -2, "getenv");
+	lua_pushcfunction(L, l_put_env);
+	lua_setfield(L, -2, "putenv");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }
