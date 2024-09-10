@@ -30,6 +30,16 @@ To update Lunar Shell pull the repo and run the install script again.
   <img width="512" height=auto src="https://github.com/BanceDev/lush/blob/main/demo.png">
 </p>
 
+```lua
+if args ~= nil and args[1] ~= nil then
+	if args[1]:match("%.c$") then
+		lush.exec("gcc -o " .. args[1]:sub(1, -3) .. " " .. args[1])
+	end
+else
+	print("must pass a C file to compile")
+end
+```
+
 With the robust and ever growing Lua API that Lunar Shell has builtin, not only can you create powerful shell scripts to automate your workflow but also reap the benefits of having an easy to understand scripting language embedded into your command line.
 
 To run a Lua script with Lunar Shell just type the name of the lua file you want to run followed by any arguments you want to pass to the script. Lunar Shell will automatically search the current working directory as well as the ```~/.lush/scripts``` directory and then execute the file if it locates a match.
