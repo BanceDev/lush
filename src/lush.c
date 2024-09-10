@@ -26,6 +26,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <asm-generic/ioctls.h>
 #include <bits/time.h>
 #include <linux/limits.h>
+#include <locale.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -292,9 +293,12 @@ static char *get_prompt() {
 	return prompt;
 }
 
-size_t get_stripped_length(const char *str) {
+static size_t get_stripped_length(const char *str) {
 	size_t len = 0;
 	size_t i = 0;
+
+	// Set the locale to properly handle UTF-8 multi-byte characters
+	setlocale(LC_CTYPE, "");
 
 	while (str[i] != '\0') {
 		if (str[i] == '\033' && str[i + 1] == '[') {
@@ -306,19 +310,41 @@ size_t get_stripped_length(const char *str) {
 			if (str[i] == 'm') {
 				i++;
 			}
-		} else {
-			len++;
+		} else if (str[i] == '\n') {
+			len = 0;
 			i++;
+		} else {
+			// Calculate the length of the current multi-byte character
+			int char_len = mblen(&str[i], MB_CUR_MAX);
+			if (char_len < 1) {
+				char_len = 1; // Fallback in case of errors
+			}
+			len++;
+			i += char_len;
 		}
 	}
 
 	return len;
 }
+
+static int get_prompt_newlines(const char *prompt) {
+	int newlines = 0;
+	int i = 0;
+	while (prompt[i++] != '\0') {
+		if (prompt[i] == '\n') {
+			newlines++;
+		}
+	}
+
+	return newlines;
+}
+
 static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 						   int history_pos) {
 	static size_t old_buffer_len = 0;
 	char *prompt = get_prompt();
 	int width = get_terminal_width();
+	int prompt_newlines = get_prompt_newlines(prompt);
 	size_t prompt_length = get_stripped_length(prompt);
 	// handle history before doing calculations
 	if (history_pos >= 0) {
@@ -363,6 +389,11 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 		}
 	}
 	*last_lines = num_lines;
+
+	// if the prompt has new lines move up
+	if (prompt_newlines > 0) {
+		printf("\033[%dA", prompt_newlines);
+	}
 
 	// ensure line is cleared before printing
 	printf("\r\033[K");
@@ -459,12 +490,12 @@ char *lush_read_line() {
 				memmove(&buffer[pos - 1], &buffer[pos],
 						strlen(&buffer[pos]) + 1);
 				pos--;
-				// handle edge case where cursor should be moved down
+				// handle edge case where cursor should be moved up
 				int width = get_terminal_width();
 				char *prompt = get_prompt();
 				size_t prompt_length = get_stripped_length(prompt);
 				if ((prompt_length + pos + 1) % width == width - 1 &&
-					pos < strlen(buffer)) {
+					pos <= strlen(buffer)) {
 					printf("\033[A");
 				}
 				// if modifying text reset history
