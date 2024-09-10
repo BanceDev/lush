@@ -327,6 +327,37 @@ static size_t get_stripped_length(const char *str) {
 	return len;
 }
 
+static size_t get_full_length(const char *str) {
+	size_t len = 0;
+	size_t i = 0;
+
+	// Set the locale to properly handle UTF-8 multi-byte characters
+	setlocale(LC_CTYPE, "");
+
+	while (str[i] != '\0') {
+		if (str[i] == '\033' && str[i + 1] == '[') {
+			// Skip over the escape sequence
+			while (str[i] != 'm' && str[i] != '\0') {
+				i++;
+			}
+			// Include 'm' character to end the escape sequence
+			if (str[i] == 'm') {
+				i++;
+			}
+		} else {
+			// Calculate the length of the current multi-byte character
+			int char_len = mblen(&str[i], MB_CUR_MAX);
+			if (char_len < 1) {
+				char_len = 1; // Fallback in case of errors
+			}
+			len++;
+			i += char_len;
+		}
+	}
+
+	return len;
+}
+
 static int get_prompt_newlines(const char *prompt) {
 	int newlines = 0;
 	int i = 0;
@@ -335,6 +366,11 @@ static int get_prompt_newlines(const char *prompt) {
 			newlines++;
 		}
 	}
+
+	// also account for if the terminal width causes wrapping
+	int width = get_terminal_width();
+	size_t prompt_length = get_full_length(prompt);
+	newlines += ((prompt_length + 1) / width);
 
 	return newlines;
 }
