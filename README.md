@@ -26,11 +26,8 @@ To update Lunar Shell pull the repo and run the install script again.
 
 ## Lua Shell Scripting
 
-<p align="center">
-  <img width="512" height=auto src="https://github.com/BanceDev/lush/blob/main/demo.png">
-</p>
-
 ```lua
+-- example lua script to compile a C file
 if args ~= nil and args[1] ~= nil then
 	if args[1]:match("%.c$") then
 		lush.exec("gcc -o " .. args[1]:sub(1, -3) .. " " .. args[1])
