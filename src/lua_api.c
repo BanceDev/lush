@@ -26,6 +26,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -332,6 +333,26 @@ static int l_alias(lua_State *L) {
 	return 0;
 }
 
+static int l_terminal_cols(lua_State *L) {
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
+		perror("ioctl");
+		return 0;
+	}
+	lua_pushnumber(L, w.ws_col);
+	return 1;
+}
+
+static int l_terminal_rows(lua_State *L) {
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
+		perror("ioctl");
+		return 0;
+	}
+	lua_pushnumber(L, w.ws_row);
+	return 1;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -370,6 +391,10 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "setPrompt");
 	lua_pushcfunction(L, l_alias);
 	lua_setfield(L, -2, "alias");
+	lua_pushcfunction(L, l_terminal_cols);
+	lua_setfield(L, -2, "termCols");
+	lua_pushcfunction(L, l_terminal_rows);
+	lua_setfield(L, -2, "termRows");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }

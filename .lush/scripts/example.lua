@@ -91,3 +91,8 @@ print("Value of EXAMPLE: " .. lush.getenv("EXAMPLE"))
 
 -- you can unset an environment variable with unsetenv
 lush.unsetenv("EXAMPLE")
+
+-- you can get the current terminal width(cols) and height(rows)
+-- this function is very useful if you want to make certain kinds of custom prompts in your init.lua
+print("Terminal Columns: " .. lush.termCols())
+print("Terminal Rows: " .. lush.termRows())

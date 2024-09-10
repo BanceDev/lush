@@ -195,6 +195,9 @@ static size_t get_prompt_len(const char *format, const char *username,
 		} else if (strncmp(format, "%w", 2) == 0) {
 			prompt_len += strlen(cwd);
 			format += 2;
+		} else if (strncmp(format, "%t", 2) == 0) {
+			prompt_len += 8; // size of time format
+			format += 2;
 		} else {
 			prompt_len++;
 			format++;
@@ -229,6 +232,18 @@ static char *format_prompt_string(const char *input, const char *username,
 		} else if (strncmp(input, "%w", 2) == 0) {
 			strcpy(dest, cwd);
 			dest += strlen(cwd);
+			input += 2;
+		} else if (strncmp(input, "%t", 2) == 0) {
+			time_t current_time;
+			time(&current_time);
+
+			struct tm *local_time = localtime(&current_time);
+
+			// Format the time as HH:MM:SS
+			char time_string[9]; // HH:MM:SS is 8 characters + null terminator
+			strftime(time_string, sizeof(time_string), "%H:%M:%S", local_time);
+			strcpy(dest, time_string);
+			dest += strlen(time_string);
 			input += 2;
 		} else {
 			*dest++ = *input++;
