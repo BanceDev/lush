@@ -78,6 +78,10 @@ void lua_load_script(lua_State *L, const char *script, char **args) {
 		fprintf(stderr, "[C] Error loading script: %s\n", error_msg);
 		lua_pop(L, 1); // remove error from stack
 	}
+
+	// reset args after running or just keep it nil
+	lua_pushnil(L);
+	lua_setglobal(L, "args");
 }
 
 void lua_run_init(lua_State *L) {
