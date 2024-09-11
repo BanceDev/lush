@@ -1174,6 +1174,11 @@ int main(int argc, char *argv[]) {
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGINT, &sa, NULL);
 
+	// set hostname envar
+	char hostname[256];
+	gethostname(hostname, sizeof(hostname));
+	setenv("HOSTNAME", hostname, 1);
+
 	int status = 0;
 	while (true) {
 		// Prompt
