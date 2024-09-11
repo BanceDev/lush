@@ -96,3 +96,13 @@ lush.unsetenv("EXAMPLE")
 -- this function is very useful if you want to make certain kinds of custom prompts in your init.lua
 print("Terminal Columns: " .. lush.termCols())
 print("Terminal Rows: " .. lush.termRows())
+
+-- the glob function scans the current working directory for files with the given extension and returns
+-- them as an array of strings
+local textFiles = lush.glob("txt")
+if textFiles ~= nil then
+	print("Printing txt files:")
+	for i = 1, #textFiles do
+		print(textFiles[i])
+	end
+end

@@ -18,6 +18,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include "lua_api.h"
 #include "history.h"
 #include "lush.h"
+#include <dirent.h>
 #include <lauxlib.h>
 #include <lua.h>
 #include <lualib.h>
@@ -357,6 +358,46 @@ static int l_terminal_rows(lua_State *L) {
 	return 1;
 }
 
+static int l_glob(lua_State *L) {
+	const char *ext = luaL_checkstring(L, 1);
+	DIR *dir;
+	struct dirent *entry;
+	size_t size = 0;
+
+	// Open the current directory
+	dir = opendir(".");
+	if (dir == NULL) {
+		perror("Unable to open current directory");
+		return 0;
+	}
+
+	// Create a Lua table for the results
+	lua_newtable(L);
+
+	// Read each directory entry
+	while ((entry = readdir(dir)) != NULL) {
+		const char *last_dot = strrchr(entry->d_name, '.');
+
+		// Only process files with extensions
+		if (last_dot != NULL) {
+			last_dot++; // Move past dot to the extension
+
+			// Check if the extension matches the input argument
+			if (strcmp(last_dot, ext) == 0) {
+				lua_pushstring(L, entry->d_name);
+				lua_rawseti(L, -2, size + 1);
+				size++;
+			}
+		}
+	}
+
+	// Close the directory
+	closedir(dir);
+
+	// Return the table with matching filenames
+	return 1;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -399,6 +440,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "termCols");
 	lua_pushcfunction(L, l_terminal_rows);
 	lua_setfield(L, -2, "termRows");
+	lua_pushcfunction(L, l_glob);
+	lua_setfield(L, -2, "glob");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }
