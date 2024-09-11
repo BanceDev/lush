@@ -83,17 +83,26 @@ int lush_cd(lua_State *L, char ***args) {
 		char path[PATH_MAX];
 		char extended_path[PATH_MAX];
 		char *tilda = strchr(args[0][1], '~');
-		if (tilda) {
+		// first check if they want to go to old dir
+		if (strcmp("-", args[0][1]) == 0) {
+			strcpy(path, getenv("OLDPWD"));
+		} else if (tilda) {
 			strcpy(path, pw->pw_dir);
 			strcat(path, tilda + 1);
 		} else {
 			strcpy(path, args[0][1]);
 		}
+
 		char *exp_path = realpath(path, extended_path);
 		if (!exp_path) {
 			perror("realpath");
 			return 1;
 		}
+
+		char *cwd = getcwd(NULL, 0);
+		setenv("OLDPWD", cwd, 1);
+		free(cwd);
+
 		if (chdir(exp_path) != 0) {
 			perror("lush: cd");
 		}
