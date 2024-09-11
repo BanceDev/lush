@@ -381,9 +381,11 @@ static int get_prompt_newlines(const char *prompt) {
 
 // -- autocomplete --
 
-// for testing purposes
+static int alphebetize_strings(const void *a, const void *b) {
+	return strcmp(*(const char **)a, *(const char **)b);
+}
 
-static char **get_suggestions(size_t *count) {
+static char **get_suggestions(size_t *count, const char *path) {
 	DIR *dir;
 	struct dirent *entry;
 	size_t capacity = 10;
@@ -397,7 +399,7 @@ static char **get_suggestions(size_t *count) {
 	}
 
 	// Open the current directory
-	dir = opendir(".");
+	dir = opendir(path);
 	if (dir == NULL) {
 		perror("Unable to open current directory");
 		free(items);
@@ -435,6 +437,9 @@ static char **get_suggestions(size_t *count) {
 
 	// Reallocate the array to the exact size needed
 	items = realloc(items, size * sizeof(char *));
+
+	qsort(items, size, sizeof(char *), alphebetize_strings);
+
 	return items;
 }
 
@@ -475,15 +480,54 @@ static const char *find_suggestion(const char *input, char **suggestions,
 	return NULL;
 }
 
-static const char *get_current_word(const char *input) {
+static const char *get_current_token(const char *input) {
 	const char *last_space = strrchr(input, ' ');
 
-	if (last_space == NULL) {
+	if (last_space == NULL)
 		return input;
-	}
 
 	// return the substring after the space
 	return last_space + 1;
+}
+
+static const char *get_current_word(const char *input) {
+	const char *current_token = get_current_token(input);
+	const char *last_slash = strrchr(current_token, '/');
+
+	if (last_slash == NULL)
+		return current_token;
+
+	return last_slash + 1;
+}
+
+char *get_suggestions_path(const char *str) {
+	if (str == NULL) {
+		return strdup("./");
+	}
+
+	const char *last_slash = strrchr(str, '/');
+
+	if (last_slash == NULL) {
+		return strdup("./");
+	}
+
+	size_t length = last_slash - str;
+
+	// Allocate memory for the substring and copy it
+	char *result = (char *)malloc(length + 3);
+	if (result == NULL) {
+		perror("malloc failed");
+		exit(EXIT_FAILURE);
+	}
+
+	strncpy(result, "./", 2);
+	result += 2;
+	strncpy(result, str, length);
+	result -= 2;
+	result[length + 2] = '\0';
+	printf("%s", result);
+
+	return result;
 }
 
 // -- shell buffer handling --
@@ -491,7 +535,7 @@ static const char *get_current_word(const char *input) {
 static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 						   int history_pos) {
 	static size_t old_buffer_len = 0;
-	char suggestion[PATH_MAX];
+	char suggestion[PATH_MAX] = {0};
 	char *prompt = get_prompt();
 	int width = get_terminal_width();
 	int prompt_newlines = get_prompt_newlines(prompt);
@@ -510,14 +554,18 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 
 	// handle autocomplete before doing calculations as well
 	size_t suggestions_count = 0;
-	char **suggestions = get_suggestions(&suggestions_count);
+	const char *current_token = get_current_token(buffer);
+	char *suggestions_path = get_suggestions_path(current_token);
 	const char *current_word = get_current_word(buffer);
+	char **suggestions = get_suggestions(&suggestions_count, suggestions_path);
 	const char *autocomplete_suggestion =
 		find_suggestion(current_word, suggestions, suggestions_count);
 
 	if (autocomplete_suggestion != NULL) {
 		strncpy(suggestion, autocomplete_suggestion, PATH_MAX);
 	}
+
+	free(suggestions_path);
 
 	int num_lines = ((strlen(buffer) + prompt_length + 1) / width) + 1;
 	int cursor_pos = (prompt_length + *pos + 1) % width;
@@ -561,7 +609,7 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 	printf("\r\033[K");
 	printf("%s ", prompt);
 	printf("%s", buffer);
-	printf("\033[1;33m%s\033[0m ", suggestion);
+	printf("\033[0;33m%s\033[0m ", suggestion);
 
 	// move cursor up and to the right to be in correct position
 	if (cursor_pos > 0)
@@ -675,6 +723,34 @@ char *lush_read_line() {
 				history_pos = -1;
 				reprint_buffer(buffer, &last_lines, &pos, history_pos);
 			}
+		} else if (c == '\t') {
+			char suggestion[PATH_MAX];
+			size_t suggestions_count = 0;
+			const char *current_token = get_current_token(buffer);
+			char *suggestions_path = get_suggestions_path(current_token);
+			const char *current_word = get_current_word(buffer);
+			char **suggestions =
+				get_suggestions(&suggestions_count, suggestions_path);
+			const char *autocomplete_suggestion =
+				find_suggestion(current_word, suggestions, suggestions_count);
+
+			if (autocomplete_suggestion != NULL) {
+				size_t suggestion_len = strlen(autocomplete_suggestion);
+				size_t current_word_len = strlen(current_word);
+
+				// Insert the suggestion in place of the current word
+				memmove(&buffer[pos + suggestion_len], &buffer[pos],
+						strlen(&buffer[pos]) + 1);
+				strncpy(&buffer[pos], autocomplete_suggestion, suggestion_len);
+
+				// Move the cursor forward
+				pos += suggestion_len;
+			}
+
+			reprint_buffer(buffer, &last_lines, &pos, history_pos);
+			free(suggestions_path);
+			free_suggestions(suggestions, suggestions_count);
+
 		} else if (c == '\n') {
 			// if modifying text reset history
 			history_pos = -1;
