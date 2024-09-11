@@ -200,6 +200,9 @@ static size_t get_prompt_size(const char *format, const char *username,
 		} else if (strncmp(format, "%t", 2) == 0) {
 			prompt_len += 8; // size of time format
 			format += 2;
+		} else if (strncmp(format, "%d", 2) == 0) {
+			prompt_len += 10;
+			format += 2;
 		} else {
 			prompt_len++;
 			format++;
@@ -220,6 +223,11 @@ static char *format_prompt_string(const char *input, const char *username,
 		return NULL;
 	}
 
+	// Get the current time
+	time_t current_time;
+	time(&current_time);
+	struct tm *local_time = localtime(&current_time);
+
 	// Replace placeholders in the input string and build the result string
 	char *dest = result;
 	while (*input) {
@@ -236,16 +244,21 @@ static char *format_prompt_string(const char *input, const char *username,
 			dest += strlen(cwd);
 			input += 2;
 		} else if (strncmp(input, "%t", 2) == 0) {
-			time_t current_time;
-			time(&current_time);
-
-			struct tm *local_time = localtime(&current_time);
-
 			// Format the time as HH:MM:SS
 			char time_string[9]; // HH:MM:SS is 8 characters + null terminator
 			strftime(time_string, sizeof(time_string), "%H:%M:%S", local_time);
 			strcpy(dest, time_string);
 			dest += strlen(time_string);
+			input += 2;
+		} else if (strncmp(input, "%d", 2) == 0) {
+			// Format the date as mm/dd/yyyy
+			char date_string[11]; // mm/dd/yyyy is 10 characters + null
+								  // terminator
+			snprintf(date_string, sizeof(date_string), "%02d/%02d/%04d",
+					 local_time->tm_mon + 1, local_time->tm_mday,
+					 local_time->tm_year + 1900);
+			strcpy(dest, date_string);
+			dest += strlen(date_string);
 			input += 2;
 		} else {
 			*dest++ = *input++;
