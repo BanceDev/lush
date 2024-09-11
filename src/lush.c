@@ -360,22 +360,98 @@ static size_t get_physical_length(const char *str) {
 	return len;
 }
 
-static int get_prompt_newlines(const char *prompt) {
-	int newlines = 0;
-	int i = 0;
-	while (prompt[i++] != '\0') {
-		if (prompt[i] == '\n') {
-			int width = get_terminal_width();
-			if (i % width != width - 1)
-				newlines++;
+static char *get_stripped_prompt(const char *str) {
+	size_t i = 0, j = 0;
+	char *clean_str = (char *)malloc(strlen(str) + 1);
+
+	if (clean_str == NULL) {
+		perror("malloc failed");
+		exit(EXIT_FAILURE);
+	}
+
+	// Set the locale to properly handle UTF-8 multi-byte characters
+	setlocale(LC_CTYPE, "");
+
+	while (str[i] != '\0') {
+		if (str[i] == '\033' && str[i + 1] == '[') {
+			// Skip over the escape sequence
+			while (str[i] != 'm' && str[i] != '\0') {
+				i++;
+			}
+			// Skip the 'm' character to end the escape sequence
+			if (str[i] == 'm') {
+				i++;
+			}
+		} else {
+			// Calculate the length of the current multi-byte character
+			int char_len = mblen(&str[i], MB_CUR_MAX);
+			if (char_len < 1) {
+				char_len = 1; // Fallback in case of errors
+			}
+
+			// Copy the non-escape sequence character(s) to the clean string
+			for (int k = 0; k < char_len; k++) {
+				clean_str[j++] = str[i++];
+			}
 		}
 	}
 
-	// also account for if the terminal width causes wrapping
-	int width = get_terminal_width();
-	size_t prompt_length = get_physical_length(prompt);
-	newlines += ((prompt_length + 1) / width);
+	// Null-terminate the clean string
+	clean_str[j] = '\0';
 
+	return clean_str;
+}
+
+static int get_prompt_newlines(const char *prompt) {
+	int newlines = 0;
+	int width = get_terminal_width();
+	size_t lines = 0;
+	size_t capacity = 2;
+	char *stripped_prompt = get_stripped_prompt(prompt);
+	int *line_widths = (int *)malloc(capacity * sizeof(int));
+
+	if (line_widths == NULL) {
+		perror("malloc failed");
+		exit(EXIT_FAILURE);
+	}
+
+	setlocale(LC_CTYPE, "");
+
+	size_t i = 0, j = 0;
+	while (i < strlen(stripped_prompt)) {
+		int char_len = mblen(&stripped_prompt[i], MB_CUR_MAX);
+		if (char_len < 1)
+			char_len = 1;
+
+		if (stripped_prompt[i] == '\n') {
+			if (i % width != width - 1)
+				newlines++;
+
+			if (lines >= capacity) {
+				capacity *= 2;
+				line_widths = realloc(line_widths, capacity * sizeof(int));
+				if (line_widths == NULL) {
+					perror("realloc failed");
+					exit(EXIT_FAILURE);
+				}
+			}
+			line_widths[lines++] = j;
+			j = 0;
+		}
+		j++;
+		i += char_len;
+	}
+
+	// also account for if the terminal width causes wrapping
+	for (size_t k = 0; k < lines; k++) {
+		newlines += (line_widths[k]) / width;
+		if ((line_widths[k] % width) == 0)
+			newlines--;
+	}
+
+	// Total number of lines is newlines plus the number of wrapped lines
+	free(line_widths);
+	free(stripped_prompt);
 	return newlines;
 }
 
@@ -401,9 +477,12 @@ static char **get_suggestions(size_t *count, const char *path) {
 	// Open the current directory
 	dir = opendir(path);
 	if (dir == NULL) {
-		perror("Unable to open current directory");
-		free(items);
-		exit(EXIT_FAILURE);
+		dir = opendir(".");
+		if (dir == NULL) {
+			perror("Unable to open current directory");
+			free(items);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	// Read each directory entry
@@ -625,7 +704,6 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 		((strlen(buffer) + strlen(suggestion) + prompt_length + 1) / width) + 1;
 	if (suggested_lines > num_lines)
 		printf("\033[A");
-
 	// cleanup
 	free(prompt);
 	old_buffer_len = strlen(buffer);
