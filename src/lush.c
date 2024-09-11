@@ -1174,10 +1174,13 @@ int main(int argc, char *argv[]) {
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGINT, &sa, NULL);
 
-	// set hostname envar
+	// set custom envars
 	char hostname[256];
 	gethostname(hostname, sizeof(hostname));
 	setenv("HOSTNAME", hostname, 1);
+	char *cwd = getcwd(NULL, 0);
+	setenv("OLDPWD", cwd, 1);
+	free(cwd);
 
 	int status = 0;
 	while (true) {
