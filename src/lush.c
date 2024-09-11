@@ -25,6 +25,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include "lualib.h"
 #include <asm-generic/ioctls.h>
 #include <bits/time.h>
+#include <dirent.h>
 #include <linux/limits.h>
 #include <locale.h>
 #include <pwd.h>
@@ -159,8 +160,6 @@ int lush_lua(lua_State *L, char ***args) {
 
 // -- shell utility --
 
-// -- static helpers for input --
-
 static void set_raw_mode(struct termios *orig_termios) {
 	struct termios raw;
 	tcgetattr(STDIN_FILENO, orig_termios);
@@ -182,8 +181,10 @@ static int get_terminal_width() {
 	return w.ws_col;
 }
 
-static size_t get_prompt_len(const char *format, const char *username,
-							 const char *hostname, const char *cwd) {
+// -- prompt helper functions --
+
+static size_t get_prompt_size(const char *format, const char *username,
+							  const char *hostname, const char *cwd) {
 	size_t prompt_len = 0;
 
 	while (*format) {
@@ -210,7 +211,7 @@ static size_t get_prompt_len(const char *format, const char *username,
 static char *format_prompt_string(const char *input, const char *username,
 								  const char *hostname, const char *cwd) {
 	// Calculate the size of the new string
-	size_t new_size = get_prompt_len(input, username, hostname, cwd) + 1;
+	size_t new_size = get_prompt_size(input, username, hostname, cwd) + 1;
 
 	// Allocate memory for the new string
 	char *result = (char *)malloc(new_size);
@@ -327,7 +328,8 @@ static size_t get_stripped_length(const char *str) {
 	return len;
 }
 
-static size_t get_full_length(const char *str) {
+// physical refers to the number of character spaces it takes up
+static size_t get_physical_length(const char *str) {
 	size_t len = 0;
 	size_t i = 0;
 
@@ -363,21 +365,133 @@ static int get_prompt_newlines(const char *prompt) {
 	int i = 0;
 	while (prompt[i++] != '\0') {
 		if (prompt[i] == '\n') {
-			newlines++;
+			int width = get_terminal_width();
+			if (i % width != width - 1)
+				newlines++;
 		}
 	}
 
 	// also account for if the terminal width causes wrapping
 	int width = get_terminal_width();
-	size_t prompt_length = get_full_length(prompt);
+	size_t prompt_length = get_physical_length(prompt);
 	newlines += ((prompt_length + 1) / width);
 
 	return newlines;
 }
 
+// -- autocomplete --
+
+// for testing purposes
+
+static char **get_suggestions(size_t *count) {
+	DIR *dir;
+	struct dirent *entry;
+	size_t capacity = 10;
+	size_t size = 0;
+
+	// Allocate initial space for the array of strings
+	char **items = malloc(capacity * sizeof(char *));
+	if (items == NULL) {
+		perror("Unable to allocate memory");
+		exit(EXIT_FAILURE);
+	}
+
+	// Open the current directory
+	dir = opendir(".");
+	if (dir == NULL) {
+		perror("Unable to open current directory");
+		free(items);
+		exit(EXIT_FAILURE);
+	}
+
+	// Read each directory entry
+	while ((entry = readdir(dir)) != NULL) {
+		// Allocate space for each filename
+		if (size >= capacity) {
+			capacity *= 2;
+			items = realloc(items, capacity * sizeof(char *));
+			if (items == NULL) {
+				perror("Unable to reallocate memory");
+				closedir(dir);
+				exit(EXIT_FAILURE);
+			}
+		}
+
+		// Copy the entry name to the array
+		items[size] = strdup(entry->d_name);
+		if (items[size] == NULL) {
+			perror("Unable to allocate memory for entry");
+			closedir(dir);
+			exit(EXIT_FAILURE);
+		}
+		size++;
+	}
+
+	// Close the directory
+	closedir(dir);
+
+	// Set the count to the number of items found
+	*count = size;
+
+	// Reallocate the array to the exact size needed
+	items = realloc(items, size * sizeof(char *));
+	return items;
+}
+
+static const char *suggestion_difference(const char *input,
+										 const char *suggestion) {
+	size_t input_len = strlen(input);
+	size_t suggestion_len = strlen(suggestion);
+
+	if (input_len <= suggestion_len &&
+		strncmp(input, suggestion, input_len) == 0) {
+		return &suggestion[input_len];
+	}
+
+	return NULL;
+}
+
+static void free_suggestions(char **suggestions, int count) {
+	for (size_t i = 0; i < count; i++) {
+		free(suggestions[i]);
+	}
+
+	free(suggestions);
+}
+
+static const char *find_suggestion(const char *input, char **suggestions,
+								   size_t count) {
+	if (strlen(input) == 0)
+		return NULL;
+
+	for (size_t i = 0; i < count; i++) {
+		if (strncmp(input, suggestions[i], strlen(input)) == 0) {
+			const char *suggestion =
+				suggestion_difference(input, suggestions[i]);
+			return suggestion;
+		}
+	}
+
+	return NULL;
+}
+
+static const char *get_current_word(const char *input) {
+	const char *last_space = strrchr(input, ' ');
+
+	if (last_space == NULL) {
+		return input;
+	}
+
+	// return the substring after the space
+	return last_space + 1;
+}
+
+// -- shell buffer handling --
+
 static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 						   int history_pos) {
 	static size_t old_buffer_len = 0;
+	char suggestion[PATH_MAX];
 	char *prompt = get_prompt();
 	int width = get_terminal_width();
 	int prompt_newlines = get_prompt_newlines(prompt);
@@ -392,6 +506,17 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 			buffer[strlen(buffer) - 1] = '\0';
 			*pos = strlen(buffer);
 		}
+	}
+
+	// handle autocomplete before doing calculations as well
+	size_t suggestions_count = 0;
+	char **suggestions = get_suggestions(&suggestions_count);
+	const char *current_word = get_current_word(buffer);
+	const char *autocomplete_suggestion =
+		find_suggestion(current_word, suggestions, suggestions_count);
+
+	if (autocomplete_suggestion != NULL) {
+		strncpy(suggestion, autocomplete_suggestion, PATH_MAX);
 	}
 
 	int num_lines = ((strlen(buffer) + prompt_length + 1) / width) + 1;
@@ -411,6 +536,7 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 			printf("\033[B");
 		}
 	}
+
 	if (old_buffer_len < strlen(buffer) || history_pos >= 0) {
 		for (int i = 0; i < *last_lines; i++) {
 			printf("\r\033[K");
@@ -434,18 +560,29 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 	// ensure line is cleared before printing
 	printf("\r\033[K");
 	printf("%s ", prompt);
-	printf("%s ", buffer);
+	printf("%s", buffer);
+	printf("\033[1;33m%s\033[0m ", suggestion);
 
 	// move cursor up and to the right to be in correct position
 	if (cursor_pos > 0)
 		printf("\r\033[%dC", cursor_pos);
 	else
 		printf("\r");
+
 	if (num_lines > 1 && (num_lines - cursor_line) > 0)
 		printf("\033[%dA", num_lines - cursor_line);
 
+	// if autocomplete goes to new line move up
+	int suggested_lines =
+		((strlen(buffer) + strlen(suggestion) + prompt_length + 1) / width) + 1;
+	if (suggested_lines > num_lines)
+		printf("\033[A");
+
+	// cleanup
 	free(prompt);
 	old_buffer_len = strlen(buffer);
+	suggestion[0] = '\0';
+	free_suggestions(suggestions, suggestions_count);
 }
 
 char *lush_read_line() {
