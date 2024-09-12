@@ -48,6 +48,7 @@ When opening a pull request ensure that your PR is limited in scope to a singula
 - A detailed description of what your changes include
 - If a new function is added to the Lua API also include demo code in the example.lua file showing its use
 - If you can, attach a screenshot demonstrating your change
+- Please run your code through the e2e testing in the test folder. Simply cd into tests in the shell and execute run_tests.lua
 
 PR's will be reviewed by one of the maintainers. If they request changes, please make them or the PR will not be able to be accepted.
 

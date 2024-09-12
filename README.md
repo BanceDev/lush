@@ -58,3 +58,16 @@ Using the Lunar Shell API to make your own scripts is super simple. Upon install
 - If you wish to contribute code of your own please submit a [pull request](https://github.com/BanceDev/lush/pulls).
 - Note: It is likely best to submit an issue before a PR to see if the feature is wanted before spending time making a commit.
 - All help is welcome!
+
+## License
+
+This project is licensed under the BSD 3-Clause License.
+
+The BSD 3-Clause License allows for redistribution and use in source and binary forms, with or without modification, provided the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions, and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions, and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+For more details, see the [LICENSE](./LICENSE) file.
+
