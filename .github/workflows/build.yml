@@ -57,7 +57,7 @@ jobs:
           lush run_tests.lua
 
       - name: Upload the compiled binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lush-binary
           path: ./bin/Debug/lush/lush
