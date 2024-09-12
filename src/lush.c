@@ -1134,7 +1134,7 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 	}
 
 	// check if the command is a lua script
-	char *ext = strchr(commands[0][0], '.');
+	char *ext = strrchr(commands[0][0], '.');
 	if (ext) {
 		ext++;
 		if (strcmp(ext, "lua") == 0) {
