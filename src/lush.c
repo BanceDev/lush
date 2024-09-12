@@ -881,8 +881,7 @@ char *lush_read_line() {
 	return buffer;
 }
 
-// -- static helper for resolving aliases --
-static char *lush_resolve_aliases(char *line) {
+char *lush_resolve_aliases(char *line) {
 	// Allocate memory for the new string
 	char *result = (char *)malloc(BUFFER_SIZE);
 	if (!result) {

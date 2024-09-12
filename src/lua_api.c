@@ -94,8 +94,11 @@ void lua_run_init(lua_State *L) {
 // -- C funtions --
 static int execute_command(lua_State *L, const char *line) {
 	int status = 0;
-	char **commands = lush_split_pipes((char *)line);
+	lush_push_history(line);
+	char *expanded_line = lush_resolve_aliases((char *)line);
+	char **commands = lush_split_pipes(expanded_line);
 	char ***args = lush_split_args(commands, &status);
+
 	if (status == -1) {
 		fprintf(stderr, "lush: Expected end of quoted string\n");
 	} else if (lush_run(L, args, status) == 0) {
@@ -105,7 +108,6 @@ static int execute_command(lua_State *L, const char *line) {
 	for (int i = 0; args[i]; i++) {
 		free(args[i]);
 	}
-	lush_push_history(line);
 	free(args);
 	free(commands);
 	return status;
