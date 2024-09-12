@@ -1186,7 +1186,7 @@ int main(int argc, char *argv[]) {
 					free(args[i]);
 				}
 				free(args);
-				return status;
+				return 0;
 			}
 		}
 	}
