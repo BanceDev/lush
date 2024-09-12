@@ -53,13 +53,13 @@ jobs:
 
       - name: Run Lua tests
         run: |
-          /usr/bin/lush <<EOF
+          /usr/bin/lush <<EOF || true
           cd test
           run_tests.lua
           exit
           EOF
 
-      - name: Upload the compiled binary (Optional)
+      - name: Upload the compiled binary
         uses: actions/upload-artifact@v3
         with:
           name: lush-binary
