@@ -52,7 +52,10 @@ jobs:
           fi  
 
       - name: Run Lua tests
-        run: lush ./test/run_tests.lua
+        run: |
+            lush 
+            ./test/run_tests.lua
+            exit
 
       - name: Upload the compiled binary (Optional)
         uses: actions/upload-artifact@v3
