@@ -1159,11 +1159,38 @@ int main(int argc, char *argv[]) {
 #endif
 		return 0;
 	}
+
 	// init lua state
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
 	lua_register_api(L);
 	lua_run_init(L);
+
+	// if a lua function is passed on load run non-interactively
+	if (argc > 1) {
+		char *ext = strrchr(argv[1], '.');
+		if (ext) {
+			ext++;
+			if (strcmp(ext, "lua") == 0) {
+				int status = 0;
+				argv++;
+				char ***args = lush_split_args(argv, &status);
+
+				if (status == -1) {
+					fprintf(stderr, "lush: Expected end of quoted string\n");
+				} else if (lush_run(L, args, status) == 0) {
+					exit(1);
+				}
+
+				for (int i = 0; args[i]; i++) {
+					free(args[i]);
+				}
+				free(args);
+				return status;
+			}
+		}
+	}
+
 	// eat ^C in main
 	struct sigaction sa;
 	sa.sa_handler = SIG_IGN;
