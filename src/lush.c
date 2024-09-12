@@ -261,11 +261,9 @@ static char *format_prompt_string(const char *input, const char *username,
 			input += 2;
 		} else if (strncmp(input, "%d", 2) == 0) {
 			// Format the date as mm/dd/yyyy
-			char date_string[11]; // mm/dd/yyyy is 10 characters + null
-								  // terminator
-			snprintf(date_string, sizeof(date_string), "%02d/%02d/%04d",
-					 local_time->tm_mon + 1, local_time->tm_mday,
-					 local_time->tm_year + 1900);
+			char date_string[36];
+			snprintf(date_string, 36, "%02d/%02d/%04d", local_time->tm_mon + 1,
+					 local_time->tm_mday, local_time->tm_year + 1900);
 			strcpy(dest, date_string);
 			dest += strlen(date_string);
 			input += 2;
