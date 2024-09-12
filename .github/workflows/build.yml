@@ -49,10 +49,7 @@ jobs:
           # Ensure the shell is registered in /etc/shells
           if ! grep -Fxq "/usr/bin/lush" /etc/shells; then
             echo "/usr/bin/lush" | sudo tee -a /etc/shells >/dev/null
-          fi
-          
-          # Optionally change the shell
-          chsh -s /usr/bin/lush
+          fi  
 
       - name: Run Lua tests
         run: lush ./test/run_tests.lua
