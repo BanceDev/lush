@@ -14,7 +14,7 @@ Lunar Shell (lush) is an open source unix shell with a single goal in mind. That
 
 ## Compiling/Installation
 
-Clone the repo and run the install script. This will also automatically set your system shell to Lunar Shell, you will need to log out and back in for the changes to take effect.
+Clone the repo and run the install script to get the development version. If you want the most recent stable version download the source code zip from the most recent [release](https://github.com/BanceDev/lush/releases). Extract it and run the install script. This will also automatically set your system shell to Lunar Shell, you will need to log out and back in for the changes to take effect.
 
 ```
 git clone https://github.com/BanceDev/lush.git
@@ -22,7 +22,7 @@ cd lush
 sh install.sh
 ```
 
-To update Lunar Shell pull the repo and run the install script again.
+To update Lunar Shell pull the repo/download the newest release and then run the install script again.
 
 ## Lua Shell Scripting
 
@@ -37,7 +37,7 @@ if args ~= nil and args[1] ~= nil then
 		lush.exec("gcc -o " .. args[1]:sub(1, -3) .. " " .. args[1])
 	end
 else
-	print("must pass a C file to compile")
+	print("must pass a C file to compile")git
 end
 ```
 
