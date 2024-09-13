@@ -87,10 +87,13 @@ void lua_load_script(lua_State *L, const char *script, char **args) {
 
 void lua_run_init(lua_State *L) {
 	char script_path[64];
-	snprintf(script_path, sizeof(script_path), ".lush/%s", "init.lua");
-	lua_load_script(L, script_path, NULL);
+	const char *home_dir = getenv("HOME");
+	if (home_dir != NULL) {
+		snprintf(script_path, sizeof(script_path), "%s/.lush/init.lua",
+				 home_dir);
+		lua_load_script(L, script_path, NULL);
+	}
 }
-
 // -- C funtions --
 static int execute_command(lua_State *L, const char *line) {
 	int status = 0;

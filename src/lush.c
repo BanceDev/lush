@@ -624,7 +624,6 @@ char *get_suggestions_path(const char *str) {
 	strncpy(result, str, length);
 	result -= 2;
 	result[length + 2] = '\0';
-	printf("%s", result);
 
 	return result;
 }
@@ -664,7 +663,7 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 		strncpy(suggestion, autocomplete_suggestion, PATH_MAX);
 	}
 
-	free(suggestions_path);
+	// free(suggestions_path);
 
 	int num_lines = ((strlen(buffer) + prompt_length + 1) / width) + 1;
 	int cursor_pos = (prompt_length + *pos + 1) % width;
@@ -724,6 +723,7 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 		((strlen(buffer) + strlen(suggestion) + prompt_length + 1) / width) + 1;
 	if (suggested_lines > num_lines)
 		printf("\033[A");
+
 	// cleanup
 	free(prompt);
 	old_buffer_len = strlen(buffer);
