@@ -62,6 +62,7 @@ char *lush_get_alias(char *alias) { return hm_get(aliases, alias); }
 
 // -- builtin functions --
 char *builtin_strs[] = {"cd", "help", "exit", "time"};
+char *builtin_usage[] = {"[dirname]", "", "", "[pipeline]"};
 
 int (*builtin_func[])(lua_State *, char ***) = {
 	&lush_cd, &lush_help, &lush_exit, &lush_time, &lush_lua};
@@ -120,7 +121,7 @@ int lush_help(lua_State *L, char ***args) {
 		   "time to reference this list.\n");
 	printf("Available commands: \n");
 	for (int i = 0; i < lush_num_builtins(); i++) {
-		printf("- %s\n", builtin_strs[i]);
+		printf("- %s %s\n", builtin_strs[i], builtin_usage[i]);
 	}
 	return 1;
 }
