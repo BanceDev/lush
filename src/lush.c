@@ -139,7 +139,7 @@ int lush_help(lua_State *L, char ***args) {
 	return 1;
 }
 
-int lush_exit(lua_State *L, char ***args) { return 0; }
+int lush_exit(lua_State *L, char ***args) { exit(0); }
 
 int lush_time(lua_State *L, char ***args) {
 	// advance past time command
@@ -1127,7 +1127,27 @@ char ***lush_split_args(char **commands, int *status) {
 	return command_args;
 }
 
-int lush_execute_chain(char ***commands, int num_commands) {
+static int run_command(lua_State *L, char ***commands) {
+	// check if the command is a lua script
+	char *ext = strrchr(commands[0][0], '.');
+	if (ext) {
+		ext++;
+		if (strcmp(ext, "lua") == 0) {
+			return ((*builtin_func[4])(L, commands));
+		}
+	}
+
+	// check shell builtins
+	for (int j = 0; j < lush_num_builtins(); j++) {
+		if (strcmp(commands[0][0], builtin_strs[j]) == 0) {
+			return ((*builtin_func[j])(L, commands));
+		}
+	}
+
+	return lush_execute_command(commands[0], STDIN_FILENO, STDOUT_FILENO);
+}
+
+int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 	if (commands[0][0][0] == '\0') {
 		return 1;
 	}
@@ -1138,18 +1158,21 @@ int lush_execute_chain(char ***commands, int num_commands) {
 	for (int i = 0; i < num_actions; i++) {
 		// Determine the operator type between commands
 		if (i < num_actions - 1) {
-			int op_type = is_operator(commands[2 * i + 1][0]);
+			int op_type = is_operator(commands[1][0]);
 			if (op_type == OP_AND && last_result != 0) {
 				continue;
 			}
 		}
 
 		// Execute the current command if it's not an operator
-		if (!is_operator(commands[2 * i][0])) {
-			last_result = lush_execute_command(commands[2 * i], STDIN_FILENO,
-											   STDOUT_FILENO);
+		if (!is_operator(commands[0][0])) {
+			last_result = run_command(L, commands);
+			commands += 2;
 		}
 	}
+
+	commands -= num_actions * 2;
+	printf("sanity check, commands[0]: %s", commands[0][0]);
 
 	return 1;
 }
@@ -1252,22 +1275,7 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 		return 1;
 	}
 
-	// check if the command is a lua script
-	char *ext = strrchr(commands[0][0], '.');
-	if (ext) {
-		ext++;
-		if (strcmp(ext, "lua") == 0) {
-			return ((*builtin_func[4])(L, commands));
-		}
-	}
-
-	// check shell builtins
-	for (int i = 0; i < lush_num_builtins(); i++) {
-		if (strcmp(commands[0][0], builtin_strs[i]) == 0) {
-			return ((*builtin_func[i])(L, commands));
-		}
-	}
-	return lush_execute_chain(commands, num_commands);
+	return lush_execute_chain(L, commands, num_commands);
 }
 
 int main(int argc, char *argv[]) {
