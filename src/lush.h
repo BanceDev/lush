@@ -35,7 +35,7 @@ int lush_num_builtins();
 int lush_run(lua_State *L, char ***commands, int num_commands);
 
 char *lush_read_line();
-char **lush_split_pipes(char *line);
+char **lush_split_commands(char *line);
 char ***lush_split_args(char **commands, int *status);
 
 void lush_execute_command(char **args, int input_fd, int output_fd);

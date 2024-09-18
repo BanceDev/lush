@@ -25,6 +25,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include "lualib.h"
 #include <asm-generic/ioctls.h>
 #include <bits/time.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <linux/limits.h>
 #include <locale.h>
@@ -935,34 +936,87 @@ char *lush_resolve_aliases(char *line) {
 	return result;
 }
 
-char **lush_split_pipes(char *line) {
+static int is_operator(const char *str) {
+	const char *operators[] = {"||", "&&", "&", ";", ">>", ">", "<",
+							   "\\", "(",  ")", "{", "}",  "!", "|"};
+	int num_operators = sizeof(operators) / sizeof(operators[0]);
+
+	for (int i = 0; i < num_operators; i++) {
+		int len = strlen(operators[i]);
+		if (strncmp(str, operators[i], len) == 0) {
+			return len;
+		}
+	}
+	return 0;
+}
+
+static char *trim_whitespace(char *str) {
+	char *end;
+
+	// Trim leading space
+	while (isspace((unsigned char)*str))
+		str++;
+
+	if (*str == 0)
+		return str; // If all spaces, return empty string
+
+	// Trim trailing space
+	end = str + strlen(str) - 1;
+	while (end > str && isspace((unsigned char)*end))
+		end--;
+
+	*(end + 1) = '\0';
+
+	return str;
+}
+
+// Split the command based on various chaining operations
+char **lush_split_commands(char *line) {
 	char **commands = calloc(16, sizeof(char *));
 	if (!commands) {
 		perror("calloc failed");
 		exit(1);
 	}
 
-	char *command;
 	int pos = 0;
+	char *start = line;
+	while (*start) {
+		// Skip leading spaces
+		while (isspace((unsigned char)*start))
+			start++;
 
-	command = strtok(line, "|");
-	while (command) {
-		commands[pos++] = command;
-		command = strtok(NULL, "|");
+		// Check for operators
+		int op_len = is_operator(start);
+		if (op_len > 0) {
+			// Allocate memory for operator command
+			char *operator_cmd = calloc(op_len + 1, sizeof(char));
+			strncpy(operator_cmd, start, op_len);
+			commands[pos++] = operator_cmd;
+			start += op_len;
+		} else {
+			// Collect regular commands until the next operator or end of string
+			char *next = start;
+			while (*next && !is_operator(next)) {
+				next++;
+			}
+
+			// Copy the command between start and next
+			char *command = strndup(start, next - start);
+			commands[pos++] = trim_whitespace(command);
+			start = next;
+		}
+
+		if (pos >= 16) {
+			// Resize if necessary
+			commands = realloc(commands, (pos + 16) * sizeof(char *));
+			if (!commands) {
+				perror("realloc failed");
+				exit(1);
+			}
+		}
 	}
 
-	// trim off whitespace
-	for (int i = 0; i < pos; i++) {
-		while (*commands[i] == ' ' || *commands[i] == '\n') {
-			commands[i]++;
-		}
-		char *end_of_str = strrchr(commands[i], '\0');
-		--end_of_str;
-		while (*end_of_str == ' ' || *end_of_str == '\n') {
-			*end_of_str = '\0';
-			--end_of_str;
-		}
-	}
+	commands[pos] = NULL;
 	return commands;
 }
 
@@ -1221,12 +1275,16 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 		char *expanded_line = lush_resolve_aliases(line);
-		char **commands = lush_split_pipes(expanded_line);
+		char **commands = lush_split_commands(expanded_line);
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
 		} else if (lush_run(L, args, status) == 0) {
 			exit(1);
+		}
+
+		for (int i = 0; commands[i] != NULL; i++) {
+			printf("Command %d: '%s'\n", i, commands[i]);
 		}
 
 		for (int i = 0; args[i]; i++) {
