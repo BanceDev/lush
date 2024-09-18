@@ -44,6 +44,18 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #define BUFFER_SIZE 1024
 
+typedef enum {
+	OP_PIPE = 1,	 // |
+	OP_AND,			 // &&
+	OP_OR,			 // ||
+	OP_SEMICOLON,	 // ;
+	OP_BACKGROUND,	 // &
+	OP_REDIRECT_OUT, // >
+	OP_APPEND_OUT,	 // >>
+	OP_REDIRECT_IN,	 // <
+	OP_OTHER		 // All other operators like parentheses, braces, etc.
+} OperatorType;
+
 // initialize prompt format
 char *prompt_format = NULL;
 
@@ -940,14 +952,31 @@ static int is_operator(const char *str) {
 	const char *operators[] = {"||", "&&", "&", ";", ">>", ">", "<",
 							   "\\", "(",  ")", "{", "}",  "!", "|"};
 	int num_operators = sizeof(operators) / sizeof(operators[0]);
-
 	for (int i = 0; i < num_operators; i++) {
-		int len = strlen(operators[i]);
-		if (strncmp(str, operators[i], len) == 0) {
-			return len;
+		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
+			switch (i) {
+			case 0:
+				return OP_OR;
+			case 1:
+				return OP_AND;
+			case 2:
+				return OP_BACKGROUND;
+			case 3:
+				return OP_SEMICOLON;
+			case 4:
+				return OP_APPEND_OUT;
+			case 5:
+				return OP_REDIRECT_OUT;
+			case 6:
+				return OP_REDIRECT_IN;
+			case 13:
+				return OP_PIPE;
+			default:
+				return OP_OTHER; // Parentheses, braces, etc.
+			}
 		}
 	}
-	return 0;
+	return 0; // Not an operator
 }
 
 static char *trim_whitespace(char *str) {
@@ -1098,6 +1127,33 @@ char ***lush_split_args(char **commands, int *status) {
 	return command_args;
 }
 
+int lush_execute_chain(char ***commands, int num_commands) {
+	if (commands[0][0][0] == '\0') {
+		return 1;
+	}
+
+	int num_actions = (num_commands + 1) / 2;
+
+	int last_result = 0;
+	for (int i = 0; i < num_actions; i++) {
+		// Determine the operator type between commands
+		if (i < num_actions - 1) {
+			int op_type = is_operator(commands[2 * i + 1][0]);
+			if (op_type == OP_AND && last_result != 0) {
+				continue;
+			}
+		}
+
+		// Execute the current command if it's not an operator
+		if (!is_operator(commands[2 * i][0])) {
+			last_result = lush_execute_command(commands[2 * i], STDIN_FILENO,
+											   STDOUT_FILENO);
+		}
+	}
+
+	return 1;
+}
+
 int lush_execute_pipeline(char ***commands, int num_commands) {
 	// no command given
 	if (commands[0][0][0] == '\0') {
@@ -1140,7 +1196,7 @@ int lush_execute_pipeline(char ***commands, int num_commands) {
 	return 1;
 }
 
-void lush_execute_command(char **args, int input_fd, int output_fd) {
+int lush_execute_command(char **args, int input_fd, int output_fd) {
 	// create child
 	pid_t pid;
 	int status;
@@ -1152,6 +1208,8 @@ void lush_execute_command(char **args, int input_fd, int output_fd) {
 
 		// restore default sigint for child
 		sa.sa_handler = SIG_DFL;
+		sigemptyset(&sa.sa_mask);
+		sa.sa_flags = 0;
 		sigaction(SIGINT, &sa, NULL);
 
 		// redirect in and out fd's if needed
@@ -1180,6 +1238,12 @@ void lush_execute_command(char **args, int input_fd, int output_fd) {
 			waitpid(pid, &status, WUNTRACED);
 		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 	}
+
+	if (WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	} else {
+		return -1;
+	}
 }
 
 int lush_run(lua_State *L, char ***commands, int num_commands) {
@@ -1203,7 +1267,7 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 			return ((*builtin_func[i])(L, commands));
 		}
 	}
-	return lush_execute_pipeline(commands, num_commands);
+	return lush_execute_chain(commands, num_commands);
 }
 
 int main(int argc, char *argv[]) {

@@ -38,8 +38,9 @@ char *lush_read_line();
 char **lush_split_commands(char *line);
 char ***lush_split_args(char **commands, int *status);
 
-void lush_execute_command(char **args, int input_fd, int output_fd);
+int lush_execute_command(char **args, int input_fd, int output_fd);
 int lush_execute_pipeline(char ***commands, int num_commands);
+int lush_execute_chain(char ***commands, int num_commands);
 
 void lush_format_prompt(const char *prompt_format);
 
