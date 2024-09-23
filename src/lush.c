@@ -928,10 +928,13 @@ char **lush_split_commands(char *line) {
 
 	int pos = 0;
 	char *start = line;
+	bool in_quote = false;
 	while (*start) {
 		// Skip leading spaces
 		while (isspace((unsigned char)*start))
 			start++;
+
+		// Check if entering or leaving a quoted string
 
 		// Check for operators
 		int op_len = operator_length(start);
@@ -944,8 +947,14 @@ char **lush_split_commands(char *line) {
 		} else {
 			// Collect regular commands until the next operator or end of string
 			char *next = start;
-			while (*next && !is_operator(next)) {
+			while (*next) {
+				if (*next == '"') {
+					in_quote = !in_quote;
+				}
 				next++;
+
+				if (!in_quote && is_operator(next))
+					break;
 			}
 
 			// Copy the command between start and next
@@ -1213,7 +1222,6 @@ int lush_execute_command(char **args, int input_fd, int output_fd) {
 		// execute the command
 		if (execvp(args[0], args) == -1) {
 			perror("execvp");
-			printf("the file: %s\n", args[0]);
 			exit(EXIT_FAILURE);
 		}
 	} else if (pid < 0) {
@@ -1324,9 +1332,6 @@ int main(int argc, char *argv[]) {
 		}
 		char *expanded_line = lush_resolve_aliases(line);
 		char **commands = lush_split_commands(expanded_line);
-		for (int i = 0; commands[i] != NULL; i++) {
-			printf("Command %d: '%s'\n", i, commands[i]);
-		}
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
