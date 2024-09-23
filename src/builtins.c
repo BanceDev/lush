@@ -84,7 +84,7 @@ int lush_cd(lua_State *L, char ***args) {
 		}
 	}
 
-	return 1;
+	return 0;
 }
 
 int lush_help(lua_State *L, char ***args) {
@@ -98,7 +98,7 @@ int lush_help(lua_State *L, char ***args) {
 	for (int i = 0; i < lush_num_builtins(); i++) {
 		printf("- %s %s\n", builtin_strs[i], builtin_usage[i]);
 	}
-	return 1;
+	return 0;
 }
 
 int lush_exit(lua_State *L, char ***args) { exit(0); }
@@ -140,5 +140,5 @@ int lush_lua(lua_State *L, char ***args) {
 
 	// return pointer back to lua file
 	args[0]--;
-	return 1;
+	return 0;
 }

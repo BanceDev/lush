@@ -1084,21 +1084,28 @@ static int run_command_background(lua_State *L, char ***commands) {
 
 int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 	if (commands[0][0][0] == '\0') {
-		return 1;
+		return 0;
 	}
 
 	int num_actions = (num_commands + 1) / 2;
 	int last_result = 0;
 
 	for (int i = 0; i < num_actions; i++) {
-		// Determine the operator type between commands
-		if (i < num_actions && commands[1] != NULL) {
-			int op_type = is_operator(commands[1][0]);
 
-			if (op_type == OP_AND && last_result != 0) {
-				commands += 2;
+		// Handle && operator
+		if (last_result != 0 && i > 0) {
+			commands--;
+			if (is_operator(commands[0][0]) == OP_AND) {
+				commands += 3;
 				continue;
-			} else if (op_type == OP_PIPE) {
+			}
+			commands++;
+		}
+
+		// Handle other operations
+		if (commands[1] != NULL) {
+			int op_type = is_operator(commands[1][0]);
+			if (op_type == OP_PIPE) {
 				char ***pipe_commands =
 					malloc(sizeof(char **) * (num_actions - i));
 				int pipe_count = 0;
@@ -1131,13 +1138,13 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 		commands += 2;
 	}
 
-	return 1;
+	return 0;
 }
 
 int lush_execute_pipeline(char ***commands, int num_commands) {
 	// no command given
 	if (commands[0][0][0] == '\0') {
-		return 1;
+		return 0;
 	}
 
 	// create pipes for each command
@@ -1173,7 +1180,7 @@ int lush_execute_pipeline(char ***commands, int num_commands) {
 		free(pipes[i]);
 	}
 	free(pipes);
-	return 1;
+	return 0;
 }
 
 int lush_execute_command(char **args, int input_fd, int output_fd) {
@@ -1206,7 +1213,7 @@ int lush_execute_command(char **args, int input_fd, int output_fd) {
 		// execute the command
 		if (execvp(args[0], args) == -1) {
 			perror("execvp");
-			printf("%s\n", args[0]);
+			printf("the file: %s\n", args[0]);
 			exit(EXIT_FAILURE);
 		}
 	} else if (pid < 0) {
@@ -1229,7 +1236,7 @@ int lush_execute_command(char **args, int input_fd, int output_fd) {
 int lush_run(lua_State *L, char ***commands, int num_commands) {
 	if (commands[0][0] == NULL) {
 		// no command given
-		return 1;
+		return 0;
 	}
 
 	return lush_execute_chain(L, commands, num_commands);
@@ -1268,7 +1275,7 @@ int main(int argc, char *argv[]) {
 
 				if (status == -1) {
 					fprintf(stderr, "lush: Expected end of quoted string\n");
-				} else if (lush_run(L, args, status) == 0) {
+				} else if (lush_run(L, args, status) != 0) {
 					exit(1);
 				}
 
@@ -1317,10 +1324,13 @@ int main(int argc, char *argv[]) {
 		}
 		char *expanded_line = lush_resolve_aliases(line);
 		char **commands = lush_split_commands(expanded_line);
+		for (int i = 0; commands[i] != NULL; i++) {
+			printf("Command %d: '%s'\n", i, commands[i]);
+		}
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
-		} else if (lush_run(L, args, status) == 0) {
+		} else if (lush_run(L, args, status) != 0) {
 			exit(1);
 		}
 
