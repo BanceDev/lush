@@ -15,7 +15,7 @@ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
-#include "history.h"
+#include "lush.h"
 #include <linux/limits.h>
 #include <pwd.h>
 #include <stdbool.h>

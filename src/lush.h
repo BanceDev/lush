@@ -20,9 +20,16 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #include <lua.h>
 
+// alias
 void lush_add_alias(const char *alias, const char *command);
 char *lush_get_alias(char *alias);
 char *lush_resolve_aliases(char *line);
+
+// builtins
+extern char *builtin_strs[];
+extern char *builtin_usage[];
+
+extern int (*builtin_func[])(lua_State *, char ***);
 
 int lush_cd(lua_State *L, char ***args);
 int lush_help(lua_State *L, char ***args);
@@ -46,5 +53,9 @@ void lush_format_prompt(const char *prompt_format);
 
 // format spec for the prompt
 extern char *prompt_format;
+
+// history
+char *lush_get_past_command(int pos);
+void lush_push_history(const char* line);
 
 #endif // LUSH_H

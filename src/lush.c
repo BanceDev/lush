@@ -17,8 +17,6 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 #include "lush.h"
 #include "hashmap.h"
-#include "help.h"
-#include "history.h"
 #include "lauxlib.h"
 #include "lua.h"
 #include "lua_api.h"
@@ -72,114 +70,6 @@ void lush_add_alias(const char *alias, const char *command) {
 }
 
 char *lush_get_alias(char *alias) { return hm_get(aliases, alias); }
-
-// -- builtin functions --
-char *builtin_strs[] = {"cd", "help", "exit", "time"};
-char *builtin_usage[] = {"[dirname]", "", "", "[pipeline]"};
-
-int (*builtin_func[])(lua_State *, char ***) = {
-	&lush_cd, &lush_help, &lush_exit, &lush_time, &lush_lua};
-
-int lush_num_builtins() { return sizeof(builtin_strs) / sizeof(char *); }
-
-int lush_cd(lua_State *L, char ***args) {
-	uid_t uid = getuid();
-	struct passwd *pw = getpwuid(uid);
-	if (!pw) {
-		perror("retrieve home dir");
-		return 0;
-	}
-	if (args[0][1] == NULL) {
-		if (chdir(pw->pw_dir) != 0) {
-			perror("lush: cd");
-		}
-	} else {
-		char path[PATH_MAX];
-		char extended_path[PATH_MAX];
-		char *tilda = strchr(args[0][1], '~');
-		// first check if they want to go to old dir
-		if (strcmp("-", args[0][1]) == 0) {
-			strcpy(path, getenv("OLDPWD"));
-		} else if (tilda) {
-			strcpy(path, pw->pw_dir);
-			strcat(path, tilda + 1);
-		} else {
-			strcpy(path, args[0][1]);
-		}
-
-		char *exp_path = realpath(path, extended_path);
-		if (!exp_path) {
-			perror("realpath");
-			return 1;
-		}
-
-		char *cwd = getcwd(NULL, 0);
-		setenv("OLDPWD", cwd, 1);
-		free(cwd);
-
-		if (chdir(exp_path) != 0) {
-			perror("lush: cd");
-		}
-	}
-
-	return 1;
-}
-
-int lush_help(lua_State *L, char ***args) {
-	printf("%s\n", lush_get_help_text());
-#ifdef LUSH_VERSION
-	printf("Lunar Shell, version %s\n", LUSH_VERSION);
-#endif
-	printf("These shell commands are defined internally. Type 'help' at any "
-		   "time to reference this list.\n");
-	printf("Available commands: \n");
-	for (int i = 0; i < lush_num_builtins(); i++) {
-		printf("- %s %s\n", builtin_strs[i], builtin_usage[i]);
-	}
-	return 1;
-}
-
-int lush_exit(lua_State *L, char ***args) { exit(0); }
-
-int lush_time(lua_State *L, char ***args) {
-	// advance past time command
-	args[0]++;
-
-	// count commands
-	int i = 0;
-	while (args[i++]) {
-		;
-	}
-
-	// get time
-	struct timespec start, end;
-	double elapsed_time;
-
-	clock_gettime(CLOCK_MONOTONIC, &start);
-	int rc = lush_run(L, args, i);
-	clock_gettime(CLOCK_MONOTONIC, &end);
-
-	elapsed_time = (end.tv_sec - start.tv_sec) * 1000.0 +
-				   (end.tv_nsec - start.tv_nsec) / 1e6;
-	printf("Time: %.3f milliseconds\n", elapsed_time);
-
-	// return pointer back to "time" for free()
-	args[0]--;
-	return rc;
-}
-
-int lush_lua(lua_State *L, char ***args) {
-	// run the lua file given
-	const char *script = args[0][0];
-	// move args forward to any command line args
-	args[0]++;
-
-	lua_load_script(L, script, args[0]);
-
-	// return pointer back to lua file
-	args[0]--;
-	return 1;
-}
 
 // -- shell utility --
 
@@ -949,8 +839,7 @@ char *lush_resolve_aliases(char *line) {
 }
 
 static int is_operator(const char *str) {
-	const char *operators[] = {"||", "&&", "&", ";", ">>", ">", "<",
-							   "\\", "(",  ")", "{", "}",  "!", "|"};
+	const char *operators[] = {"||", "&&", ">>", ">", "<", "&", ";", "|"};
 	int num_operators = sizeof(operators) / sizeof(operators[0]);
 	for (int i = 0; i < num_operators; i++) {
 		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
@@ -960,23 +849,53 @@ static int is_operator(const char *str) {
 			case 1:
 				return OP_AND;
 			case 2:
-				return OP_BACKGROUND;
-			case 3:
-				return OP_SEMICOLON;
-			case 4:
 				return OP_APPEND_OUT;
-			case 5:
+			case 3:
 				return OP_REDIRECT_OUT;
-			case 6:
+			case 4:
 				return OP_REDIRECT_IN;
-			case 13:
+			case 5:
+				return OP_BACKGROUND;
+			case 6:
+				return OP_SEMICOLON;
+			case 7:
 				return OP_PIPE;
 			default:
-				return OP_OTHER; // Parentheses, braces, etc.
+				return 0;
 			}
 		}
 	}
 	return 0; // Not an operator
+}
+
+static int operator_length(const char *str) {
+	const char *operators[] = {"||", "&&", ">>", ">", "<", "&", ";", "|"};
+	int num_operators = sizeof(operators) / sizeof(operators[0]);
+	for (int i = 0; i < num_operators; i++) {
+		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
+			switch (i) {
+			case 0:
+				return 2;
+			case 1:
+				return 2;
+			case 2:
+				return 2;
+			case 3:
+				return 1;
+			case 4:
+				return 1;
+			case 5:
+				return 1;
+			case 6:
+				return 1;
+			case 7:
+				return 1;
+			default:
+				return 0;
+			}
+		}
+	}
+	return 0;
 }
 
 static char *trim_whitespace(char *str) {
@@ -1015,7 +934,7 @@ char **lush_split_commands(char *line) {
 			start++;
 
 		// Check for operators
-		int op_len = is_operator(start);
+		int op_len = operator_length(start);
 		if (op_len > 0) {
 			// Allocate memory for operator command
 			char *operator_cmd = calloc(op_len + 1, sizeof(char));
@@ -1147,6 +1066,22 @@ static int run_command(lua_State *L, char ***commands) {
 	return lush_execute_command(commands[0], STDIN_FILENO, STDOUT_FILENO);
 }
 
+static int run_command_background(lua_State *L, char ***commands) {
+	pid_t pid = fork();
+
+	if (pid < 0) {
+		perror("fork");
+		return -1;
+	} else if (pid == 0) {
+		execvp(commands[0][0], commands[0]);
+		perror("execvp background");
+		exit(EXIT_FAILURE);
+	} else {
+		printf("Process %d running in background\n", pid);
+		return 0;
+	}
+}
+
 int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 	if (commands[0][0][0] == '\0') {
 		return 1;
@@ -1190,6 +1125,13 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 				commands += 2;
 				continue;
 			}
+			// Handle '&' operator for background execution
+			if (op_type == OP_BACKGROUND) {
+
+				run_command_background(L, commands);
+				commands += 2;
+				continue;
+			}
 		}
 
 		if (!is_operator(commands[0][0])) {
@@ -1198,7 +1140,7 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 		}
 	}
 
-	return last_result;
+	return 1;
 }
 
 int lush_execute_pipeline(char ***commands, int num_commands) {
@@ -1273,6 +1215,7 @@ int lush_execute_command(char **args, int input_fd, int output_fd) {
 		// execute the command
 		if (execvp(args[0], args) == -1) {
 			perror("execvp");
+			printf("%s\n", args[0]);
 			exit(EXIT_FAILURE);
 		}
 	} else if (pid < 0) {
@@ -1288,9 +1231,8 @@ int lush_execute_command(char **args, int input_fd, int output_fd) {
 
 	if (WIFEXITED(status)) {
 		return WEXITSTATUS(status);
-	} else {
-		return -1;
 	}
+	return -1;
 }
 
 int lush_run(lua_State *L, char ***commands, int num_commands) {
@@ -1300,6 +1242,12 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 	}
 
 	return lush_execute_chain(L, commands, num_commands);
+}
+
+static void background_handler(int sig) {
+	// Reap all child processes
+	while (waitpid(-1, NULL, WNOHANG) > 0)
+		;
 }
 
 int main(int argc, char *argv[]) {
@@ -1343,11 +1291,17 @@ int main(int argc, char *argv[]) {
 	}
 
 	// eat ^C in main
-	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;
-	sa.sa_flags = 0;
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGINT, &sa, NULL);
+	struct sigaction sa_int;
+	sa_int.sa_handler = SIG_IGN;
+	sa_int.sa_flags = 0;
+	sigemptyset(&sa_int.sa_mask);
+	sigaction(SIGINT, &sa_int, NULL);
+
+	struct sigaction sa_bk;
+	sa_bk.sa_handler = &background_handler;
+	sigemptyset(&sa_bk.sa_mask);
+	sa_bk.sa_flags = SA_RESTART;
+	sigaction(SIGCHLD, &sa_bk, NULL);
 
 	// set custom envars
 	char hostname[256];

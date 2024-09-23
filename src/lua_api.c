@@ -16,7 +16,6 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 */
 
 #include "lua_api.h"
-#include "history.h"
 #include "lush.h"
 #include <dirent.h>
 #include <lauxlib.h>
