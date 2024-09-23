@@ -25,6 +25,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include "lualib.h"
 #include <asm-generic/ioctls.h>
 #include <bits/time.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <linux/limits.h>
 #include <locale.h>
@@ -42,6 +43,18 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <unistd.h>
 
 #define BUFFER_SIZE 1024
+
+typedef enum {
+	OP_PIPE = 1,	 // |
+	OP_AND,			 // &&
+	OP_OR,			 // ||
+	OP_SEMICOLON,	 // ;
+	OP_BACKGROUND,	 // &
+	OP_REDIRECT_OUT, // >
+	OP_APPEND_OUT,	 // >>
+	OP_REDIRECT_IN,	 // <
+	OP_OTHER		 // All other operators like parentheses, braces, etc.
+} OperatorType;
 
 // initialize prompt format
 char *prompt_format = NULL;
@@ -126,7 +139,7 @@ int lush_help(lua_State *L, char ***args) {
 	return 1;
 }
 
-int lush_exit(lua_State *L, char ***args) { return 0; }
+int lush_exit(lua_State *L, char ***args) { exit(0); }
 
 int lush_time(lua_State *L, char ***args) {
 	// advance past time command
@@ -935,34 +948,104 @@ char *lush_resolve_aliases(char *line) {
 	return result;
 }
 
-char **lush_split_pipes(char *line) {
+static int is_operator(const char *str) {
+	const char *operators[] = {"||", "&&", "&", ";", ">>", ">", "<",
+							   "\\", "(",  ")", "{", "}",  "!", "|"};
+	int num_operators = sizeof(operators) / sizeof(operators[0]);
+	for (int i = 0; i < num_operators; i++) {
+		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
+			switch (i) {
+			case 0:
+				return OP_OR;
+			case 1:
+				return OP_AND;
+			case 2:
+				return OP_BACKGROUND;
+			case 3:
+				return OP_SEMICOLON;
+			case 4:
+				return OP_APPEND_OUT;
+			case 5:
+				return OP_REDIRECT_OUT;
+			case 6:
+				return OP_REDIRECT_IN;
+			case 13:
+				return OP_PIPE;
+			default:
+				return OP_OTHER; // Parentheses, braces, etc.
+			}
+		}
+	}
+	return 0; // Not an operator
+}
+
+static char *trim_whitespace(char *str) {
+	char *end;
+
+	// Trim leading space
+	while (isspace((unsigned char)*str))
+		str++;
+
+	if (*str == 0)
+		return str; // If all spaces, return empty string
+
+	// Trim trailing space
+	end = str + strlen(str) - 1;
+	while (end > str && isspace((unsigned char)*end))
+		end--;
+
+	*(end + 1) = '\0';
+
+	return str;
+}
+
+// Split the command based on various chaining operations
+char **lush_split_commands(char *line) {
 	char **commands = calloc(16, sizeof(char *));
 	if (!commands) {
 		perror("calloc failed");
 		exit(1);
 	}
 
-	char *command;
 	int pos = 0;
+	char *start = line;
+	while (*start) {
+		// Skip leading spaces
+		while (isspace((unsigned char)*start))
+			start++;
 
-	command = strtok(line, "|");
-	while (command) {
-		commands[pos++] = command;
-		command = strtok(NULL, "|");
+		// Check for operators
+		int op_len = is_operator(start);
+		if (op_len > 0) {
+			// Allocate memory for operator command
+			char *operator_cmd = calloc(op_len + 1, sizeof(char));
+			strncpy(operator_cmd, start, op_len);
+			commands[pos++] = operator_cmd;
+			start += op_len;
+		} else {
+			// Collect regular commands until the next operator or end of string
+			char *next = start;
+			while (*next && !is_operator(next)) {
+				next++;
+			}
+
+			// Copy the command between start and next
+			char *command = strndup(start, next - start);
+			commands[pos++] = trim_whitespace(command);
+			start = next;
+		}
+
+		if (pos >= 16) {
+			// Resize if necessary
+			commands = realloc(commands, (pos + 16) * sizeof(char *));
+			if (!commands) {
+				perror("realloc failed");
+				exit(1);
+			}
+		}
 	}
 
-	// trim off whitespace
-	for (int i = 0; i < pos; i++) {
-		while (*commands[i] == ' ' || *commands[i] == '\n') {
-			commands[i]++;
-		}
-		char *end_of_str = strrchr(commands[i], '\0');
-		--end_of_str;
-		while (*end_of_str == ' ' || *end_of_str == '\n') {
-			*end_of_str = '\0';
-			--end_of_str;
-		}
-	}
+	commands[pos] = NULL;
 	return commands;
 }
 
@@ -1044,6 +1127,80 @@ char ***lush_split_args(char **commands, int *status) {
 	return command_args;
 }
 
+static int run_command(lua_State *L, char ***commands) {
+	// check if the command is a lua script
+	char *ext = strrchr(commands[0][0], '.');
+	if (ext) {
+		ext++;
+		if (strcmp(ext, "lua") == 0) {
+			return ((*builtin_func[4])(L, commands));
+		}
+	}
+
+	// check shell builtins
+	for (int j = 0; j < lush_num_builtins(); j++) {
+		if (strcmp(commands[0][0], builtin_strs[j]) == 0) {
+			return ((*builtin_func[j])(L, commands));
+		}
+	}
+
+	return lush_execute_command(commands[0], STDIN_FILENO, STDOUT_FILENO);
+}
+
+int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
+	if (commands[0][0][0] == '\0') {
+		return 1;
+	}
+
+	int num_actions = (num_commands + 1) / 2;
+	int last_result = 0;
+
+	for (int i = 0; i < num_actions; i++) {
+		// Determine the operator type between commands
+		if (i < num_actions - 1) {
+			int op_type = is_operator(commands[1][0]);
+
+			// Handle '&&' operator
+			if (op_type == OP_AND && last_result != 0) {
+				commands += 2;
+				continue;
+			}
+
+			// Handle '|', build pipe array
+			if (op_type == OP_PIPE) {
+				char ***pipe_commands =
+					malloc(sizeof(char **) * (num_actions - i));
+				int pipe_count = 0;
+
+				while (i < num_actions - 1 && op_type == OP_PIPE) {
+					pipe_commands[pipe_count++] = commands[0];
+					commands += 2;
+					i++;
+					if (i < num_actions - 1) {
+						op_type = is_operator(commands[1][0]);
+					} else {
+						break;
+					}
+				}
+
+				pipe_commands[pipe_count++] = commands[0];
+				last_result = lush_execute_pipeline(pipe_commands, pipe_count);
+
+				free(pipe_commands);
+				commands += 2;
+				continue;
+			}
+		}
+
+		if (!is_operator(commands[0][0])) {
+			last_result = run_command(L, commands);
+			commands += 2;
+		}
+	}
+
+	return last_result;
+}
+
 int lush_execute_pipeline(char ***commands, int num_commands) {
 	// no command given
 	if (commands[0][0][0] == '\0') {
@@ -1086,7 +1243,7 @@ int lush_execute_pipeline(char ***commands, int num_commands) {
 	return 1;
 }
 
-void lush_execute_command(char **args, int input_fd, int output_fd) {
+int lush_execute_command(char **args, int input_fd, int output_fd) {
 	// create child
 	pid_t pid;
 	int status;
@@ -1098,6 +1255,8 @@ void lush_execute_command(char **args, int input_fd, int output_fd) {
 
 		// restore default sigint for child
 		sa.sa_handler = SIG_DFL;
+		sigemptyset(&sa.sa_mask);
+		sa.sa_flags = 0;
 		sigaction(SIGINT, &sa, NULL);
 
 		// redirect in and out fd's if needed
@@ -1126,6 +1285,12 @@ void lush_execute_command(char **args, int input_fd, int output_fd) {
 			waitpid(pid, &status, WUNTRACED);
 		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 	}
+
+	if (WIFEXITED(status)) {
+		return WEXITSTATUS(status);
+	} else {
+		return -1;
+	}
 }
 
 int lush_run(lua_State *L, char ***commands, int num_commands) {
@@ -1134,22 +1299,7 @@ int lush_run(lua_State *L, char ***commands, int num_commands) {
 		return 1;
 	}
 
-	// check if the command is a lua script
-	char *ext = strrchr(commands[0][0], '.');
-	if (ext) {
-		ext++;
-		if (strcmp(ext, "lua") == 0) {
-			return ((*builtin_func[4])(L, commands));
-		}
-	}
-
-	// check shell builtins
-	for (int i = 0; i < lush_num_builtins(); i++) {
-		if (strcmp(commands[0][0], builtin_strs[i]) == 0) {
-			return ((*builtin_func[i])(L, commands));
-		}
-	}
-	return lush_execute_pipeline(commands, num_commands);
+	return lush_execute_chain(L, commands, num_commands);
 }
 
 int main(int argc, char *argv[]) {
@@ -1221,7 +1371,7 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 		char *expanded_line = lush_resolve_aliases(line);
-		char **commands = lush_split_pipes(expanded_line);
+		char **commands = lush_split_commands(expanded_line);
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");

@@ -99,7 +99,7 @@ static int execute_command(lua_State *L, const char *line) {
 	int status = 0;
 	lush_push_history(line);
 	char *expanded_line = lush_resolve_aliases((char *)line);
-	char **commands = lush_split_pipes(expanded_line);
+	char **commands = lush_split_commands(expanded_line);
 	char ***args = lush_split_args(commands, &status);
 
 	if (status == -1) {
