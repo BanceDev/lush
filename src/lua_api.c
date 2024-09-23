@@ -103,7 +103,7 @@ static int execute_command(lua_State *L, const char *line) {
 
 	if (status == -1) {
 		fprintf(stderr, "lush: Expected end of quoted string\n");
-	} else if (lush_run(L, args, status) == 0) {
+	} else if (lush_run(L, args, status) != 0) {
 		exit(1);
 	}
 
