@@ -1153,28 +1153,52 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 	}
 
 	int num_actions = (num_commands + 1) / 2;
-
 	int last_result = 0;
+
 	for (int i = 0; i < num_actions; i++) {
 		// Determine the operator type between commands
 		if (i < num_actions - 1) {
 			int op_type = is_operator(commands[1][0]);
+
+			// Handle '&&' operator
 			if (op_type == OP_AND && last_result != 0) {
+				commands += 2;
+				continue;
+			}
+
+			// Handle '|', build pipe array
+			if (op_type == OP_PIPE) {
+				char ***pipe_commands =
+					malloc(sizeof(char **) * (num_actions - i));
+				int pipe_count = 0;
+
+				while (i < num_actions - 1 && op_type == OP_PIPE) {
+					pipe_commands[pipe_count++] = commands[0];
+					commands += 2;
+					i++;
+					if (i < num_actions - 1) {
+						op_type = is_operator(commands[1][0]);
+					} else {
+						break;
+					}
+				}
+
+				pipe_commands[pipe_count++] = commands[0];
+				last_result = lush_execute_pipeline(pipe_commands, pipe_count);
+
+				free(pipe_commands);
+				commands += 2;
 				continue;
 			}
 		}
 
-		// Execute the current command if it's not an operator
 		if (!is_operator(commands[0][0])) {
 			last_result = run_command(L, commands);
 			commands += 2;
 		}
 	}
 
-	commands -= num_actions * 2;
-	printf("sanity check, commands[0]: %s", commands[0][0]);
-
-	return 1;
+	return last_result;
 }
 
 int lush_execute_pipeline(char ***commands, int num_commands) {
@@ -1353,10 +1377,6 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
 		} else if (lush_run(L, args, status) == 0) {
 			exit(1);
-		}
-
-		for (int i = 0; commands[i] != NULL; i++) {
-			printf("Command %d: '%s'\n", i, commands[i]);
 		}
 
 		for (int i = 0; args[i]; i++) {
