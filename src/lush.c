@@ -1071,7 +1071,7 @@ static int run_command(lua_State *L, char ***commands) {
 	return lush_execute_command(commands[0], STDIN_FILENO, STDOUT_FILENO);
 }
 
-static int run_command_redirect(lua_State *L, char ***commands) {
+static int run_command_redirect(lua_State *L, char ***commands, int mode) {
 	if (commands[2][0] == NULL)
 		return -1;
 
@@ -1081,7 +1081,7 @@ static int run_command_redirect(lua_State *L, char ***commands) {
 		return -1;
 	}
 
-	int fd = open(commands[2][0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	int fd = open(commands[2][0], O_WRONLY | O_CREAT | mode, 0644);
 	if (fd == -1) {
 		perror("invalid fd");
 		close(saved_stdout);
@@ -1183,8 +1183,12 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 				commands += 2;
 				continue;
 			} else if (op_type == OP_REDIRECT_OUT) {
-				run_command_redirect(L, commands);
+				run_command_redirect(L, commands, O_TRUNC);
 				commands += 3; // to go past fd given
+				continue;
+			} else if (op_type == OP_APPEND_OUT) {
+				run_command_redirect(L, commands, O_APPEND);
+				commands += 3;
 				continue;
 			}
 		}
