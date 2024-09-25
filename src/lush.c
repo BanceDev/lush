@@ -1072,7 +1072,7 @@ static int run_command(lua_State *L, char ***commands) {
 }
 
 static int run_command_redirect(lua_State *L, char ***commands, int mode) {
-	if (commands[2][0] == NULL)
+	if (commands[2] == NULL)
 		return -1;
 
 	int saved_stdout = dup(STDOUT_FILENO);
