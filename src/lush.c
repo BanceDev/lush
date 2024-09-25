@@ -25,6 +25,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <bits/time.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <linux/limits.h>
 #include <locale.h>
 #include <pwd.h>
@@ -50,7 +51,6 @@ typedef enum {
 	OP_BACKGROUND,	 // &
 	OP_REDIRECT_OUT, // >
 	OP_APPEND_OUT,	 // >>
-	OP_REDIRECT_IN,	 // <
 	OP_OTHER		 // All other operators like parentheses, braces, etc.
 } OperatorType;
 
@@ -839,7 +839,7 @@ char *lush_resolve_aliases(char *line) {
 }
 
 static int is_operator(const char *str) {
-	const char *operators[] = {"||", "&&", ">>", ">", "<", "&", ";", "|"};
+	const char *operators[] = {"||", "&&", ">>", ">", "&", ";", "|"};
 	int num_operators = sizeof(operators) / sizeof(operators[0]);
 	for (int i = 0; i < num_operators; i++) {
 		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
@@ -853,12 +853,10 @@ static int is_operator(const char *str) {
 			case 3:
 				return OP_REDIRECT_OUT;
 			case 4:
-				return OP_REDIRECT_IN;
-			case 5:
 				return OP_BACKGROUND;
-			case 6:
+			case 5:
 				return OP_SEMICOLON;
-			case 7:
+			case 6:
 				return OP_PIPE;
 			default:
 				return 0;
@@ -1073,6 +1071,43 @@ static int run_command(lua_State *L, char ***commands) {
 	return lush_execute_command(commands[0], STDIN_FILENO, STDOUT_FILENO);
 }
 
+static int run_command_redirect(lua_State *L, char ***commands) {
+	if (commands[2][0] == NULL)
+		return -1;
+
+	int saved_stdout = dup(STDOUT_FILENO);
+	if (saved_stdout == -1) {
+		perror("dup");
+		return -1;
+	}
+
+	int fd = open(commands[2][0], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd == -1) {
+		perror("invalid fd");
+		close(saved_stdout);
+		return -1;
+	}
+
+	if (dup2(fd, STDOUT_FILENO) == -1) {
+		perror("dup2");
+		close(fd);
+		close(saved_stdout);
+		return -1;
+	}
+	close(fd);
+	run_command(L, commands);
+
+	if (dup2(saved_stdout, STDOUT_FILENO) == -1) {
+		perror("dup2 restore");
+		close(saved_stdout);
+		return -1;
+	}
+
+	close(saved_stdout);
+	return 0;
+}
+
+// TODO: Allow background process to run lua script
 static int run_command_background(lua_State *L, char ***commands) {
 	pid_t pid = fork();
 
@@ -1083,10 +1118,10 @@ static int run_command_background(lua_State *L, char ***commands) {
 		execvp(commands[0][0], commands[0]);
 		perror("execvp background");
 		exit(EXIT_FAILURE);
-	} else {
-		printf("Process %d running in background\n", pid);
-		return 0;
 	}
+
+	printf("Process %d running in background\n", pid);
+	return 0;
 }
 
 int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
@@ -1147,11 +1182,16 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 				run_command_background(L, commands);
 				commands += 2;
 				continue;
+			} else if (op_type == OP_REDIRECT_OUT) {
+				run_command_redirect(L, commands);
+				commands += 3; // to go past fd given
+				continue;
 			}
 		}
-
-		last_result = run_command(L, commands);
-		commands += 2;
+		if (commands[0] != NULL) {
+			last_result = run_command(L, commands);
+			commands += 2;
+		}
 	}
 
 	return 0;
