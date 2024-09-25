@@ -934,8 +934,6 @@ char **lush_split_commands(char *line) {
 		while (isspace((unsigned char)*start))
 			start++;
 
-		// Check if entering or leaving a quoted string
-
 		// Check for operators
 		int op_len = operator_length(start);
 		if (op_len > 0) {
@@ -1105,6 +1103,15 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 		if (last_result != 0 && i > 0) {
 			commands--;
 			if (is_operator(commands[0][0]) == OP_AND) {
+				commands += 3;
+				continue;
+			}
+			commands++;
+		}
+
+		if (last_result == 0 && i > 0) {
+			commands--;
+			if (is_operator(commands[0][0]) == OP_OR) {
 				commands += 3;
 				continue;
 			}
