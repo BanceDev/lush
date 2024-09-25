@@ -867,26 +867,19 @@ static int is_operator(const char *str) {
 }
 
 static int operator_length(const char *str) {
-	const char *operators[] = {"||", "&&", ">>", ">", "<", "&", ";", "|"};
+	const char *operators[] = {"||", "&&", ">>", ">", "&", ";", "|"};
 	int num_operators = sizeof(operators) / sizeof(operators[0]);
 	for (int i = 0; i < num_operators; i++) {
 		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
 			switch (i) {
 			case 0:
-				return 2;
 			case 1:
-				return 2;
 			case 2:
 				return 2;
 			case 3:
-				return 1;
 			case 4:
-				return 1;
 			case 5:
-				return 1;
 			case 6:
-				return 1;
-			case 7:
 				return 1;
 			default:
 				return 0;
@@ -1133,19 +1126,21 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 	int last_result = 0;
 
 	for (int i = 0; i < num_actions; i++) {
+		// Handle ; operator
+		if (is_operator(commands[0][0]) == OP_SEMICOLON) {
+			commands++;
+		}
 
-		// Handle &&, ||, and ; operators
+		// Handle && and || operators
 		if (i > 0) {
 			commands--;
 			if (last_result != 0) {
-				if (is_operator(commands[0][0]) == OP_AND ||
-					is_operator(commands[0][0]) == OP_SEMICOLON) {
+				if (is_operator(commands[0][0]) == OP_AND) {
 					commands += 3;
 					continue;
 				}
-			} else if (last_result == 0) {
-				if (is_operator(commands[0][0]) == OP_OR ||
-					is_operator(commands[0][0]) == OP_SEMICOLON) {
+			} else {
+				if (is_operator(commands[0][0]) == OP_OR) {
 					commands += 3;
 					continue;
 				}
