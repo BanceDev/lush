@@ -1099,21 +1099,21 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 
 	for (int i = 0; i < num_actions; i++) {
 
-		// Handle && operator
-		if (last_result != 0 && i > 0) {
+		// Handle &&, ||, and ; operators
+		if (i > 0) {
 			commands--;
-			if (is_operator(commands[0][0]) == OP_AND) {
-				commands += 3;
-				continue;
-			}
-			commands++;
-		}
-
-		if (last_result == 0 && i > 0) {
-			commands--;
-			if (is_operator(commands[0][0]) == OP_OR) {
-				commands += 3;
-				continue;
+			if (last_result != 0) {
+				if (is_operator(commands[0][0]) == OP_AND ||
+					is_operator(commands[0][0]) == OP_SEMICOLON) {
+					commands += 3;
+					continue;
+				}
+			} else if (last_result == 0) {
+				if (is_operator(commands[0][0]) == OP_OR ||
+					is_operator(commands[0][0]) == OP_SEMICOLON) {
+					commands += 3;
+					continue;
+				}
 			}
 			commands++;
 		}
