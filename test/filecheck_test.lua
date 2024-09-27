@@ -19,28 +19,33 @@ if lush.exists("~/.lush/scripts/example.lua") then
 	print("exists test passed ✅\n")
 else
 	print("exists test failed ❌\n")
+	lush.exit()
 end
 
 if lush.isFile("~/.lush/scripts/example.lua") then
 	print("isFile test passed ✅\n")
 else
 	print("isFile test failed ❌\n")
+	lush.exit()
 end
 
 if not lush.isDirectory("~/.lush/scripts/example.lua") then
 	print("isDirectory test passed ✅\n")
 else
 	print("isDirectory test failed ❌\n")
+	lush.exit()
 end
 
 if lush.isReadable("~/.lush/scripts/example.lua") then
 	print("isReadable test passed ✅\n")
 else
 	print("isReadable test failed ❌\n")
+	lush.exit()
 end
 
 if lush.isWriteable("~/.lush/scripts/example.lua") then
 	print("isWriteable test passed ✅\n")
 else
 	print("isWriteable test failed ❌\n")
+	lush.exit()
 end

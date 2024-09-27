@@ -29,10 +29,13 @@ if lush.getHistory(1) == lush.lastHistory() then
 			print("getHistory test passed ✅\n")
 		else
 			print("getHistory test failed at args history ❌\n")
+			lush.exit()
 		end
 	else
 		print("getHistory test failed at piping history ❌\n")
+		lush.exit()
 	end
 else
 	print("getHistory test failed at lastHistory ❌\n")
+	lush.exit()
 end

@@ -34,7 +34,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 static bool debug_mode = false;
 
 // -- script execution --
-void lua_load_script(lua_State *L, const char *script, char **args) {
+int lua_load_script(lua_State *L, const char *script, char **args) {
 	char script_path[512];
 	// check if script is in the current directory
 	if (access(script, F_OK) == 0) {
@@ -48,12 +48,12 @@ void lua_load_script(lua_State *L, const char *script, char **args) {
 			if (access(script_path, F_OK) != 0) {
 				// script not in either location
 				fprintf(stderr, "[C] Script not found: %s\n", script);
-				return;
+				return -1;
 			}
 		} else {
 			// HOME not set
 			fprintf(stderr, "[C] HOME directory is not set.\n");
-			return;
+			return -1;
 		}
 	}
 	// add args global if args were passed
@@ -66,22 +66,27 @@ void lua_load_script(lua_State *L, const char *script, char **args) {
 		}
 		lua_setglobal(L, "args");
 	}
+
+	int rc = 0;
 	// if we got here the file exists
 	if (luaL_loadfile(L, script_path) == LUA_OK) {
 		if (lua_pcall(L, 0, LUA_MULTRET, 0) != LUA_OK) {
 			const char *error_msg = lua_tostring(L, -1);
 			fprintf(stderr, "[C] Error executing script: %s\n", error_msg);
 			lua_pop(L, 1); // remove error from stack
+			rc = -1;
 		}
 	} else {
 		const char *error_msg = lua_tostring(L, -1);
 		fprintf(stderr, "[C] Error loading script: %s\n", error_msg);
 		lua_pop(L, 1); // remove error from stack
+		rc = -1;
 	}
 
 	// reset args after running or just keep it nil
 	lua_pushnil(L);
 	lua_setglobal(L, "args");
+	return rc;
 }
 
 void lua_run_init(lua_State *L) {
@@ -93,6 +98,7 @@ void lua_run_init(lua_State *L) {
 		lua_load_script(L, script_path, NULL);
 	}
 }
+
 // -- C funtions --
 static int execute_command(lua_State *L, const char *line) {
 	int status = 0;
@@ -402,6 +408,12 @@ static int l_glob(lua_State *L) {
 	return 1;
 }
 
+static int l_exit(lua_State *L) {
+	lua_pushstring(L, "program terminated by lush exit");
+	lua_error(L);
+	return 0;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -446,6 +458,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "termRows");
 	lua_pushcfunction(L, l_glob);
 	lua_setfield(L, -2, "glob");
+	lua_pushcfunction(L, l_exit);
+	lua_setfield(L, -2, "exit");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }

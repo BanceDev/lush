@@ -20,6 +20,7 @@ if lush.getenv("ENVTEST") == "envtest" then
 	print("setenv test passed ✅\n")
 else
 	print("setenv test failed ❌\n")
+	lush.exit()
 end
 
 lush.unsetenv("ENVTEST")
@@ -27,4 +28,5 @@ if lush.getenv("ENVTEST") == nil then
 	print("unsetenv test passed ✅\n")
 else
 	print("unsetenv test failed ❌\n")
+	lush.exit()
 end

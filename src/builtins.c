@@ -136,9 +136,9 @@ int lush_lua(lua_State *L, char ***args) {
 	// move args forward to any command line args
 	args[0]++;
 
-	lua_load_script(L, script, args[0]);
+	int rc = lua_load_script(L, script, args[0]);
 
 	// return pointer back to lua file
 	args[0]--;
-	return 0;
+	return rc;
 }

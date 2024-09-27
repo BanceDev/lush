@@ -17,7 +17,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 if args == nil then
 	print("args test failed, no args found ❌\n")
-	return
+	lush.exit()
 else
 	print("args:")
 	for i = 1, #args do

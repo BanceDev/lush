@@ -15,6 +15,7 @@ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 ]]
 
+-- TODO: Add API method for asserting command output equals some string
 print("Starting Lunar Shell End-to-End Testing...\n")
 print("Entering Debug Mode...")
 lush.debug(true)
