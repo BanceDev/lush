@@ -22,4 +22,41 @@ if lush.exec('cat "example.lua" | grep "hello" | sort | uniq') then
 else
 	print("piping test failed ❌\n")
 end
+
+if lush.exec("echo hi && echo bye") then
+	print("and test passed ✅\n")
+else
+	print("and test failed ❌\n")
+end
+
+if lush.exec("cd lol || echo lol does not exist") then
+	print("or test passed ✅\n")
+else
+	print("or test failed ❌\n")
+end
+
+if lush.exec("sleep 2 &") then
+	print("background test passed ✅\n")
+else
+	print("background test failed ❌\n")
+end
+
+if lush.exec("echo hi; echo bye") then
+	print("semicolon test passed ✅\n")
+else
+	print("semicolon test failed ❌\n")
+end
+
+if lush.exec("echo hi > test.txt") then
+	print("redirect test passed ✅\n")
+else
+	print("redirect test failed ❌\n")
+end
+
+if lush.exec("echo hi >> test.txt") then
+	print("append test passed ✅\n")
+else
+	print("append test failed ❌\n")
+end
+
 lush.cd(cwd)

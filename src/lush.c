@@ -1126,13 +1126,8 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 	int last_result = 0;
 
 	for (int i = 0; i < num_actions; i++) {
-		// Handle ; operator
-		if (is_operator(commands[0][0]) == OP_SEMICOLON) {
-			commands++;
-		}
-
-		// Handle && and || operators
-		if (i > 0) {
+		// Handle &&, ||, and ; operators
+		if (i > 0 && commands[0] != NULL) {
 			commands--;
 			if (last_result != 0) {
 				if (is_operator(commands[0][0]) == OP_AND) {
@@ -1146,6 +1141,10 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 				}
 			}
 			commands++;
+
+			if (is_operator(commands[0][0]) == OP_SEMICOLON) {
+				commands++;
+			}
 		}
 
 		// Handle other operations
@@ -1174,15 +1173,15 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 				commands += 2;
 				continue;
 			} else if (op_type == OP_BACKGROUND) {
-				run_command_background(L, commands);
+				last_result = run_command_background(L, commands);
 				commands += 2;
 				continue;
 			} else if (op_type == OP_REDIRECT_OUT) {
-				run_command_redirect(L, commands, O_TRUNC);
+				last_result = run_command_redirect(L, commands, O_TRUNC);
 				commands += 3; // to go past fd given
 				continue;
 			} else if (op_type == OP_APPEND_OUT) {
-				run_command_redirect(L, commands, O_APPEND);
+				last_result = run_command_redirect(L, commands, O_APPEND);
 				commands += 3;
 				continue;
 			}

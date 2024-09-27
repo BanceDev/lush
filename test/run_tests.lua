@@ -22,8 +22,8 @@ lush.debug(true)
 print("Testing Args...")
 lush.exec("args_test.lua testarg1 testarg2 testarg3")
 
-print("\nTesting Piping...")
-lush.exec("pipes_test.lua")
+print("\nTesting Chaining...")
+lush.exec("chaining_test.lua")
 
 print("\nTesting File Checks...")
 lush.exec("filecheck_test.lua")
