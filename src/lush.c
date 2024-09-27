@@ -44,14 +44,18 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #define BUFFER_SIZE 1024
 
 typedef enum {
-	OP_PIPE = 1,	 // |
-	OP_AND,			 // &&
-	OP_OR,			 // ||
-	OP_SEMICOLON,	 // ;
-	OP_BACKGROUND,	 // &
-	OP_REDIRECT_OUT, // >
-	OP_APPEND_OUT,	 // >>
-	OP_OTHER		 // All other operators like parentheses, braces, etc.
+	OP_PIPE = 1,		// |
+	OP_AND,				// &&
+	OP_OR,				// ||
+	OP_SEMICOLON,		// ;
+	OP_BACKGROUND,		// &
+	OP_REDIRECT_STDOUT, // 1> or >
+	OP_REDIRECT_STDERR, // 2>
+	OP_REDIRECT_BOTH,	// &>
+	OP_APPEND_STDOUT,	// 1>> or >>
+	OP_APPEND_STDERR,	// 2>>
+	OP_APPEND_BOTH,		// &>>
+	OP_OTHER			// All other operators like parentheses, braces, etc.
 } OperatorType;
 
 // initialize prompt format
@@ -839,24 +843,37 @@ char *lush_resolve_aliases(char *line) {
 }
 
 static int is_operator(const char *str) {
-	const char *operators[] = {"||", "&&", ">>", ">", "&", ";", "|"};
+	const char *operators[] = {"1>>", "2>>", "&>>", ">>", "1>", "2>", "&>",
+							   "||",  "&&",	 ">",	"&",  ";",	"|"};
 	int num_operators = sizeof(operators) / sizeof(operators[0]);
 	for (int i = 0; i < num_operators; i++) {
 		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
 			switch (i) {
 			case 0:
-				return OP_OR;
+				return OP_APPEND_STDOUT;
 			case 1:
-				return OP_AND;
+				return OP_APPEND_STDERR;
 			case 2:
-				return OP_APPEND_OUT;
+				return OP_APPEND_BOTH;
 			case 3:
-				return OP_REDIRECT_OUT;
+				return OP_APPEND_STDOUT;
 			case 4:
-				return OP_BACKGROUND;
+				return OP_REDIRECT_STDOUT;
 			case 5:
-				return OP_SEMICOLON;
+				return OP_REDIRECT_STDERR;
 			case 6:
+				return OP_REDIRECT_BOTH;
+			case 7:
+				return OP_OR;
+			case 8:
+				return OP_AND;
+			case 9:
+				return OP_REDIRECT_STDOUT;
+			case 10:
+				return OP_BACKGROUND;
+			case 11:
+				return OP_SEMICOLON;
+			case 12:
 				return OP_PIPE;
 			default:
 				return 0;
@@ -867,7 +884,8 @@ static int is_operator(const char *str) {
 }
 
 static int operator_length(const char *str) {
-	const char *operators[] = {"||", "&&", ">>", ">", "&", ";", "|"};
+	const char *operators[] = {"1>>", "2>>", "&>>", ">>", "1>", "2>", "&>",
+							   "||",  "&&",	 ">",	"&",  ";",	"|"};
 	int num_operators = sizeof(operators) / sizeof(operators[0]);
 	for (int i = 0; i < num_operators; i++) {
 		if (strncmp(str, operators[i], strlen(operators[i])) == 0) {
@@ -875,11 +893,18 @@ static int operator_length(const char *str) {
 			case 0:
 			case 1:
 			case 2:
-				return 2;
+				return 3;
 			case 3:
 			case 4:
 			case 5:
 			case 6:
+			case 7:
+			case 8:
+				return 2;
+			case 9:
+			case 10:
+			case 11:
+			case 12:
 				return 1;
 			default:
 				return 0;
@@ -1064,39 +1089,97 @@ static int run_command(lua_State *L, char ***commands) {
 	return lush_execute_command(commands[0], STDIN_FILENO, STDOUT_FILENO);
 }
 
-static int run_command_redirect(lua_State *L, char ***commands, int mode) {
+static int run_command_redirect(lua_State *L, char ***commands, int operator) {
 	if (commands[2] == NULL)
 		return -1;
 
-	int saved_stdout = dup(STDOUT_FILENO);
-	if (saved_stdout == -1) {
-		perror("dup");
-		return -1;
+	int mode = (operator>= OP_REDIRECT_STDOUT && operator<= OP_REDIRECT_BOTH)
+				   ? O_TRUNC
+				   : O_APPEND;
+
+	int redirect_flags = 0;
+	if (operator== OP_REDIRECT_STDOUT || operator== OP_APPEND_STDOUT) {
+		redirect_flags = 1;
+	} else if (operator== OP_REDIRECT_STDERR || operator== OP_APPEND_STDERR) {
+		redirect_flags = 2;
+	} else {
+		redirect_flags = 3;
 	}
 
+	int saved_stdout = -1, saved_stderr = -1;
 	int fd = open(commands[2][0], O_WRONLY | O_CREAT | mode, 0644);
 	if (fd == -1) {
 		perror("invalid fd");
-		close(saved_stdout);
 		return -1;
 	}
 
-	if (dup2(fd, STDOUT_FILENO) == -1) {
-		perror("dup2");
-		close(fd);
-		close(saved_stdout);
-		return -1;
+	// Redirect stdout
+	if (redirect_flags & 1) {
+		saved_stdout = dup(STDOUT_FILENO);
+		if (saved_stdout == -1) {
+			perror("dup stdout");
+			close(fd);
+			return -1;
+		}
+
+		if (dup2(fd, STDOUT_FILENO) == -1) {
+			perror("dup2 stdout");
+			close(fd);
+			close(saved_stdout);
+			return -1;
+		}
 	}
+
+	// Redirect stderr
+	if (redirect_flags & 2) {
+		saved_stderr = dup(STDERR_FILENO);
+		if (saved_stderr == -1) {
+			perror("dup stderr");
+			if (saved_stdout != -1) {
+				dup2(saved_stdout, STDOUT_FILENO);
+				close(saved_stdout);
+			}
+			close(fd);
+			return -1;
+		}
+
+		if (dup2(fd, STDERR_FILENO) == -1) {
+			perror("dup2 stderr");
+			if (saved_stdout != -1) {
+				dup2(saved_stdout, STDOUT_FILENO);
+				close(saved_stdout);
+			}
+			close(saved_stderr);
+			close(fd);
+			return -1;
+		}
+	}
+
 	close(fd);
+
+	// Run the command
 	run_command(L, commands);
 
-	if (dup2(saved_stdout, STDOUT_FILENO) == -1) {
-		perror("dup2 restore");
+	// Restore stdout
+	if (saved_stdout != -1) {
+		if (dup2(saved_stdout, STDOUT_FILENO) == -1) {
+			perror("dup2 restore stdout");
+			close(saved_stdout);
+			return -1;
+		}
 		close(saved_stdout);
-		return -1;
 	}
 
-	close(saved_stdout);
+	// Restore stderr
+	if (saved_stderr != -1) {
+		if (dup2(saved_stderr, STDERR_FILENO) == -1) {
+			perror("dup2 restore stderr");
+			close(saved_stderr);
+			return -1;
+		}
+		close(saved_stderr);
+	}
+
 	return 0;
 }
 
@@ -1176,12 +1259,9 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 				last_result = run_command_background(L, commands);
 				commands += 2;
 				continue;
-			} else if (op_type == OP_REDIRECT_OUT) {
-				last_result = run_command_redirect(L, commands, O_TRUNC);
-				commands += 3; // to go past fd given
-				continue;
-			} else if (op_type == OP_APPEND_OUT) {
-				last_result = run_command_redirect(L, commands, O_APPEND);
+			} else if (op_type >= OP_REDIRECT_STDOUT &&
+					   op_type <= OP_APPEND_BOTH) {
+				last_result = run_command_redirect(L, commands, op_type);
 				commands += 3;
 				continue;
 			}
