@@ -1186,9 +1186,12 @@ int lush_execute_chain(lua_State *L, char ***commands, int num_commands) {
 				continue;
 			}
 		}
-		if (commands[0] != NULL) {
+		// Run the command or move past the operator
+		if (commands[0] != NULL && !is_operator(commands[0][0])) {
 			last_result = run_command(L, commands);
 			commands += 2;
+		} else {
+			commands++;
 		}
 	}
 
