@@ -27,7 +27,7 @@ files({
 	"lib/hashmap/**.h",
 	"lib/hashmap/**.c",
 })
-defines({ 'LUSH_VERSION="0.2.2"' })
+defines({ 'LUSH_VERSION="0.2.3"' })
 
 filter("configurations:Debug")
 defines({ "DEBUG" })
