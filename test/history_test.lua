@@ -26,7 +26,11 @@ if lush.getHistory(1) == lush.lastHistory() then
 	if lush.getHistory(9) == 'cat "example.lua" | grep "hello" | sort | uniq' then
 		-- ensure args history is stored correctly
 		if lush.getHistory(11) == "args_test.lua testarg1 testarg2 testarg3" then
-			print("getHistory test passed ✅\n")
+			if lush.getHistory(0) == nil and lush.getHistory(-1) == nil then
+				print("getHistory test passed ✅\n")
+			else
+				print("getHistory test failed at zero and negative history ❌\n")
+			end
 		else
 			print("getHistory test failed at args history ❌\n")
 			lush.exit()

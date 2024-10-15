@@ -15,7 +15,6 @@ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 ]]
 
--- TODO: Add more edge case tests for chaining operators
 local cwd = lush.getcwd()
 lush.cd("~/.lush/scripts")
 if lush.exec('cat "example.lua" | grep "hello" | sort | uniq') then
@@ -53,17 +52,36 @@ else
 	lush.exit()
 end
 
-if lush.exec("echo hi > test.txt") then
+if
+	lush.exec(
+		"echo hi > test.txt; echo hi 1> test.txt; echo this wont redirect 2> test.txt; echo but this will &> test.txt"
+	)
+then
 	print("redirect test passed ✅\n")
 else
 	print("redirect test failed ❌\n")
 	lush.exit()
 end
 
-if lush.exec("echo hi >> test.txt") then
+if
+	lush.exec(
+		"echo hi >> test.txt; echo hi 1>> test.txt; echo this wont append 2>> test.txt; echo but this will &>> test.txt"
+	)
+then
 	print("append test passed ✅\n")
 else
 	print("append test failed ❌\n")
+	lush.exit()
+end
+
+if
+	lush.exec(
+		'cat "example.lua" | grep "hello" | sort | uniq && echo hi >> test.txt; echo this should print && cd lol || echo lol doesnt exist &> test.txt'
+	)
+then
+	print("complex chain test passed ✅\n")
+else
+	print("complex chain test failed ❌\n")
 	lush.exit()
 end
 

@@ -110,7 +110,7 @@ static int execute_command(lua_State *L, const char *line) {
 	if (status == -1) {
 		fprintf(stderr, "lush: Expected end of quoted string\n");
 	} else if (lush_run(L, args, status) != 0) {
-		exit(1);
+		return -1;
 	}
 
 	for (int i = 0; args[i]; i++) {
@@ -118,7 +118,7 @@ static int execute_command(lua_State *L, const char *line) {
 	}
 	free(args);
 	free(commands);
-	return status;
+	return 0;
 }
 
 static char *get_expanded_path(const char *check_item) {
@@ -155,7 +155,7 @@ static char *get_expanded_path(const char *check_item) {
 static int l_execute_command(lua_State *L) {
 	const char *command = luaL_checkstring(L, 1);
 	int status = execute_command(L, command);
-	bool rc = status != -1 ? true : false;
+	bool rc = status == 0 ? true : false;
 
 	if (debug_mode) {
 		if (rc)

@@ -93,10 +93,56 @@ int lush_help(lua_State *L, char ***args) {
 	printf("Lunar Shell, version %s\n", LUSH_VERSION);
 #endif
 	printf("These shell commands are defined internally. Type 'help' at any "
-		   "time to reference this list.\n");
-	printf("Available commands: \n");
+		   "time to reference this list.\n\n");
+	printf("Available commands:\n");
 	for (int i = 0; i < lush_num_builtins(); i++) {
 		printf("- %s %s\n", builtin_strs[i], builtin_usage[i]);
+	}
+
+	char *api_strs[] = {"exec(string command)",
+						"getcwd()",
+						"debug(boolean isOn)",
+						"cd(string path)",
+						"exists(string path)",
+						"isFile(string path)",
+						"isDir(string path)",
+						"isReadable(string path)",
+						"isWriteable(string path)",
+						"lastHistory()",
+						"getHistory(int index)",
+						"getenv(string envar)",
+						"setenv(string envar, string val)",
+						"unsetenv(string envar)",
+						"setPrompt(string prompt)",
+						"alias(string alias, string command)",
+						"termCols()",
+						"termRows()",
+						"glob(string extension)",
+						"exit()"};
+	char *api_usage[] = {
+		"executes the command line chain given",
+		"gets current working directory",
+		"sets debug mode",
+		"changed current working directory to path given",
+		"checks if a file/directory exists at path",
+		"checks if given path is a file",
+		"checks if given path is a directory",
+		"checks if given path is readable",
+		"checks if given path is writeable",
+		"returns last history element",
+		"returns history at an index, 1 is most recent",
+		"returns value of an environment variable",
+		"sets the value of an environment variable",
+		"unsets the value of an environment variable",
+		"sets the prompt for the shell",
+		"sets an alias for a command",
+		"returns present number of columns in terminal",
+		"returns present number of rows in terminal",
+		"returns an array of filenames that have a given extension",
+		"ends the current process erroneously"};
+	printf("\nLunar Shell Lua API:\n\n");
+	for (int i = 0; i < sizeof(api_strs) / sizeof(char *); i++) {
+		printf("\033[1;32mlush.%s: \033[0m%s\n", api_strs[i], api_usage[i]);
 	}
 	return 0;
 }

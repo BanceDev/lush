@@ -106,3 +106,7 @@ if textFiles ~= nil then
 		print(textFiles[i])
 	end
 end
+
+-- the exit function is used to make the program quit in the case of an error
+print("making an error with lush.exit()")
+lush.exit()

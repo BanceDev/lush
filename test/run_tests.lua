@@ -19,18 +19,34 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 print("Starting Lunar Shell End-to-End Testing...\n")
 print("Entering Debug Mode...")
 lush.debug(true)
+local rc = true
 
 print("Testing Args...")
-lush.exec("args_test.lua testarg1 testarg2 testarg3")
+rc = lush.exec("args_test.lua testarg1 testarg2 testarg3")
+if rc == false then
+	lush.exit()
+end
 
 print("\nTesting Chaining...")
-lush.exec("chaining_test.lua")
+rc = lush.exec("chaining_test.lua")
+if rc == false then
+	lush.exit()
+end
 
 print("\nTesting File Checks...")
-lush.exec("filecheck_test.lua")
+rc = lush.exec("filecheck_test.lua")
+if rc == false then
+	lush.exit()
+end
 
 print("\nTesting History...")
-lush.exec("history_test.lua")
+rc = lush.exec("history_test.lua")
+if rc == false then
+	lush.exit()
+end
 
 print("\nTesting Environment Variables...")
-lush.exec("env_test.lua")
+rc = lush.exec("env_test.lua")
+if rc == false then
+	lush.exit()
+end
