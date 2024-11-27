@@ -41,7 +41,7 @@ if args ~= nil and args[1] ~= nil then
 		lush.exec("gcc -o " .. args[1]:sub(1, -3) .. " " .. args[1])
 	end
 else
-	print("must pass a C file to compile")git
+	print("must pass a C file to compile")
 end
 ```
 
