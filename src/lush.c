@@ -1075,7 +1075,7 @@ static int run_command(lua_State *L, char ***commands) {
 	if (ext) {
 		ext++;
 		if (strcmp(ext, "lua") == 0) {
-			return ((*builtin_func[4])(L, commands));
+			return ((*builtin_func[LUSH_LUA])(L, commands));
 		}
 	}
 
