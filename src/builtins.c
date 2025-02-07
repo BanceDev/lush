@@ -36,11 +36,60 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <time.h>
 #include <unistd.h>
 
-char *builtin_strs[] = {"cd", "help", "exit", "time"};
-char *builtin_usage[] = {"[dirname]", "", "", "[pipeline]"};
+#define MAX_SIGNALS 64
+
+lua_State *trap_L;
+
+char *traps[MAX_SIGNALS];
+
+const char *sig_strs[] = {
+	"SIGHUP",	   "SIGINT",	  "SIGQUIT",	 "SIGILL",		"SIGTRAP",
+	"SIGABRT",	   "SIGBUS",	  "SIGFPE",		 "SIGKILL",		"SIGUSR1",
+	"SIGSEGV",	   "SIGUSR2",	  "SIGPIPE",	 "SIGALRM",		"SIGTERM",
+	"SIGSTKFLT",   "SIGCHLD",	  "SIGCONT",	 "SIGSTOP",		"SIGTSTP",
+	"SIGTTIN",	   "SIGTTOU",	  "SIGURG",		 "SIGXCPU",		"SIGXFSZ",
+	"SIGVTALRM",   "SIGPROF",	  "SIGWINCH",	 "SIGIO",		"SIGPWR",
+	"SIGSYS",	   NULL,		  NULL,			 "SIGRTMIN",	"SIGRTMIN+1",
+	"SIGRTMIN+2",  "SIGRTMIN+3",  "SIGRTMIN+4",	 "SIGRTMIN+5",	"SIGRTMIN+6",
+	"SIGRTMIN+7",  "SIGRTMIN+8",  "SIGRTMIN+9",	 "SIGRTMIN+10", "SIGRTMIN+11",
+	"SIGRTMIN+12", "SIGRTMIN+13", "SIGRTMIN+14", "SIGRTMIN+15", "SIGRTMAX-14",
+	"SIGRTMAX-13", "SIGRTMAX-12", "SIGRTMAX-11", "SIGRTMAX-10", "SIGRTMAX-9",
+	"SIGRTMAX-8",  "SIGRTMAX-7",  "SIGRTMAX-6",	 "SIGRTMAX-5",	"SIGRTMAX-4",
+	"SIGRTMAX-3",  "SIGRTMAX-2",  "SIGRTMAX-1",	 "SIGRTMAX"};
+
+static int trap_exec(const char *line) {
+	int status = 0;
+	lush_push_history(line);
+	char *expanded_line = lush_resolve_aliases((char *)line);
+	char **commands = lush_split_commands(expanded_line);
+	char ***args = lush_split_args(commands, &status);
+
+	if (status == -1) {
+		fprintf(stderr, "lush: Expected end of quoted string\n");
+	} else if (lush_run(trap_L, args, status) != 0) {
+		return -1;
+	}
+
+	for (int i = 0; args[i]; i++) {
+		free(args[i]);
+	}
+	free(args);
+	free(commands);
+	return 0;
+}
+
+void trap_handler(int signum) {
+	if (traps[signum - 1]) {
+		trap_exec(traps[signum - 1]);
+	}
+}
+
+char *builtin_strs[] = {"cd", "help", "exit", "time", "trap"};
+char *builtin_usage[] = {"[dirname]", "", "", "[pipeline]",
+						 "[-lp] [[command] signal]"};
 
 int (*builtin_func[])(lua_State *, char ***) = {
-	&lush_cd, &lush_help, &lush_exit, &lush_time, &lush_lua};
+	&lush_cd, &lush_help, &lush_exit, &lush_time, &lush_trap, &lush_lua};
 
 int lush_num_builtins() { return sizeof(builtin_strs) / sizeof(char *); }
 
@@ -174,6 +223,92 @@ int lush_time(lua_State *L, char ***args) {
 	// return pointer back to "time" for free()
 	args[0]--;
 	return rc;
+}
+
+int lush_trap(lua_State *L, char ***args) {
+	args[0]++;
+	// check for -lp
+	if (args[0][0][0] == '-') {
+		if (strchr(args[0][0], 'l')) {
+			// list all the signals
+			printf("1) SIGHUP	 2) SIGINT	 3) "
+				   "SIGQUIT	 4) SIGILL	 5) SIGTRAP\n"
+				   "6) SIGABRT	 7) SIGBUS	 8) "
+				   "SIGFPE	 9) SIGKILL	10) SIGUSR1\n"
+				   "11) SIGSEGV	12) SIGUSR2	13) "
+				   "SIGPIPE	14) SIGALRM	15) "
+				   "SIGTERM\n"
+				   "16) SIGSTKFLT	17) SIGCHLD	18) "
+				   "SIGCONT	19) SIGSTOP	20) "
+				   "SIGTSTP\n"
+				   "21) SIGTTIN	22) SIGTTOU	23) "
+				   "SIGURG	24) SIGXCPU	25) "
+				   "SIGXFSZ\n"
+				   "26) SIGVTALRM	27) SIGPROF	28) "
+				   "SIGWINCH	29) SIGIO	30) "
+				   "SIGPWR\n"
+				   "31) SIGSYS	34) SIGRTMIN	35) "
+				   "SIGRTMIN+1	36) SIGRTMIN+2	"
+				   "37) SIGRTMIN+3\n"
+				   "38) SIGRTMIN+4	39) SIGRTMIN+5	40) "
+				   "SIGRTMIN+6	41) "
+				   "SIGRTMIN+7	42) SIGRTMIN+8\n"
+				   "43) SIGRTMIN+9	44) SIGRTMIN+10	45) "
+				   "SIGRTMIN+11	46) "
+				   "SIGRTMIN+12	47) SIGRTMIN+13\n"
+				   "48) SIGRTMIN+14	49) SIGRTMIN+15	50) "
+				   "SIGRTMAX-14	51) "
+				   "SIGRTMAX-13	52) SIGRTMAX-12\n"
+				   "53) SIGRTMAX-11	54) SIGRTMAX-10	55) "
+				   "SIGRTMAX-9	56) "
+				   "SIGRTMAX-8	57) SIGRTMAX-7\n"
+				   "58) SIGRTMAX-6	59) SIGRTMAX-5	60) "
+				   "SIGRTMAX-4	61) "
+				   "SIGRTMAX-3	62) SIGRTMAX-2\n"
+				   "63) SIGRTMAX-1	64) SIGRTMAX\n");
+			args[0]--;
+			return 0;
+		}
+		if (strchr(args[0][0], 'p')) {
+			for (int i = 0; i < MAX_SIGNALS; i++) {
+				if (traps[i] != NULL) {
+					printf("trap -- '%s' %s\n", traps[i], sig_strs[i]);
+				}
+			}
+			args[0]--;
+			return 0;
+		}
+		if (strlen(args[0][0]) == 1) {
+			// check for unbinding
+			for (int i = 0; i < MAX_SIGNALS; i++) {
+				if (sig_strs[i] && strcmp(args[0][1], sig_strs[i]) == 0) {
+					if (i == 1) {
+						// SIGINT is a special case for parent process
+						signal(i + 1, SIG_IGN);
+					} else {
+						signal(i + 1, SIG_DFL);
+					}
+					break;
+				}
+			}
+			args[0]--;
+			return 0;
+		}
+	}
+
+	if (args[0][0] && args[0][1]) {
+		for (int i = 0; i < MAX_SIGNALS; i++) {
+			if (sig_strs[i] && strcmp(args[0][1], sig_strs[i]) == 0) {
+				traps[i] = strdup(args[0][0]);
+				trap_L = L; // idk if I like this but doing it for now
+				signal(i + 1, trap_handler);
+				break;
+			}
+		}
+	}
+
+	args[0]--;
+	return 0;
 }
 
 int lush_lua(lua_State *L, char ***args) {

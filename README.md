@@ -11,7 +11,7 @@
 
 # Lunar Shell
 
-Lunar Shell (lush) is an open source unix shell with a single goal in mind. That goal is to offer the ability to write shell scripts for your operating system entirely in Lua. The Lua scripting language has many powerful features that allow for more control in the hands of the user to automate tasks on their machine.
+Lunar Shell (lush) is an open source Linux shell with a single goal in mind. That goal is to offer the ability to write shell scripts for your operating system entirely in Lua. The Lua scripting language has many powerful features that allow for more control in the hands of the user to automate tasks on their machine.
 
 > [!NOTE]  
 > Lunar Shell is very early in development and may be lacking in many features common of other Linux shells.

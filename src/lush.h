@@ -35,6 +35,7 @@ int lush_cd(lua_State *L, char ***args);
 int lush_help(lua_State *L, char ***args);
 int lush_exit(lua_State *L, char ***args);
 int lush_time(lua_State *L, char ***args);
+int lush_trap(lua_State *L, char ***args);
 int lush_lua(lua_State *L, char ***args);
 
 int lush_num_builtins();
