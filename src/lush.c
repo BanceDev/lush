@@ -1386,10 +1386,42 @@ static void background_handler(int sig) {
 
 int main(int argc, char *argv[]) {
 	// check if the --version arg was passed
-	if (argc > 1 && strcmp(argv[1], "--version") == 0) {
+	if (argc > 2 && strcmp(argv[1], "--version") == 0) {
 #ifdef LUSH_VERSION
 		printf("Lunar Shell, version %s\n", LUSH_VERSION);
 #endif
+		return 0;
+	}
+
+	// check if being run in command string mode
+	if (argc > 2 && strcmp(argv[1], "-c") == 0) {
+		// init Lua state
+		lua_State *L = luaL_newstate();
+		luaL_openlibs(L);
+		lua_register_api(L);
+		lua_run_init(L);
+
+		// execute the command provided
+		char *command = argv[2];
+		char *expanded_command = lush_resolve_aliases(command);
+		char **commands = lush_split_commands(expanded_command);
+		int status = 0;
+		char ***args = lush_split_args(commands, &status);
+
+		if (status == -1) {
+			fprintf(stderr, "lush: Expected end of quoted string\n");
+		} else if (lush_run(L, args, status) != 0) {
+			exit(1);
+		}
+
+		// clean up
+		for (int i = 0; args[i]; i++) {
+			free(args[i]);
+		}
+		free(args);
+		free(commands);
+		free(expanded_command);
+		lua_close(L);
 		return 0;
 	}
 
