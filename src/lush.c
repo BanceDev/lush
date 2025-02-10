@@ -1386,7 +1386,7 @@ static void background_handler(int sig) {
 
 int main(int argc, char *argv[]) {
 	// check if the --version arg was passed
-	if (argc > 2 && strcmp(argv[1], "--version") == 0) {
+	if (argc > 1 && strcmp(argv[1], "--version") == 0) {
 #ifdef LUSH_VERSION
 		printf("Lunar Shell, version %s\n", LUSH_VERSION);
 #endif
