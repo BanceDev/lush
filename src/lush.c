@@ -26,6 +26,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <glob.h>
 #include <linux/limits.h>
 #include <locale.h>
 #include <pwd.h>
@@ -42,6 +43,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <unistd.h>
 
 #define BUFFER_SIZE 1024
+#define MAX_GLOB 512
 
 typedef enum {
 	OP_PIPE = 1,		// |
@@ -842,6 +844,73 @@ char *lush_resolve_aliases(char *line) {
 	return result;
 }
 
+static void lush_expand_globs(char ***args) {
+	if (args == NULL || *args == NULL) {
+		return;
+	}
+
+	// iterate over each arg
+	for (int i = 0; args[i]; i++) {
+		char **arg_list = args[i];
+		for (int j = 0; arg_list[j]; j++) {
+			char *arg = arg_list[j];
+
+			// check if the arg string has a glob pattern
+			if (strpbrk(arg, "*?[") != NULL) {
+				glob_t glob_result;
+				memset(&glob_result, 0, sizeof(glob_result));
+
+				// use glob to expand the arg
+				int ret =
+					glob(arg, GLOB_TILDE | GLOB_BRACE, NULL, &glob_result);
+				if (ret == 0) {
+					// if there is a nonzero number of matches malloc new arg
+					// memory
+					if (glob_result.gl_pathc > 0) {
+						char **new_args = (char **)malloc(
+							(glob_result.gl_pathc + 1) * sizeof(char *));
+						if (new_args == NULL) {
+							perror("malloc failed");
+							globfree(&glob_result);
+							return;
+						}
+
+						for (size_t k = 0; k < glob_result.gl_pathc; k++) {
+							new_args[k] = strdup(glob_result.gl_pathv[k]);
+							if (new_args[k] == NULL) {
+								perror("strdup failed");
+								for (size_t l = 0; l < k; l++) {
+									free(new_args[l]);
+								}
+								free(new_args);
+								globfree(&glob_result);
+								return;
+							}
+						}
+						new_args[glob_result.gl_pathc] = NULL;
+
+						// replace the original arg with new list
+						arg_list[j] = new_args[0];
+
+						for (size_t k = 1; k < glob_result.gl_pathc; k++) {
+							// insert the new argument
+							arg_list[j + k] = new_args[k];
+						}
+
+						free(new_args);
+					}
+				} else if (ret == GLOB_NOMATCH) {
+
+				} else {
+					fprintf(stderr, "glob failed with error code %d\n", ret);
+				}
+
+				globfree(&glob_result);
+			}
+		}
+	}
+}
+
 static int is_operator(const char *str) {
 	const char *operators[] = {"1>>", "2>>", "&>>", ">>", "1>", "2>", "&>",
 							   "||",  "&&",	 ">",	"&",  ";",	"|"};
@@ -1495,7 +1564,11 @@ int main(int argc, char *argv[]) {
 		char ***args = lush_split_args(commands, &status);
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
-		} else if (lush_run(L, args, status) != 0) {
+		} else {
+			lush_expand_globs(args);
+		}
+
+		if (lush_run(L, args, status) != 0) {
 			exit(1);
 		}
 
