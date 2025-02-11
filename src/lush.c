@@ -1479,7 +1479,11 @@ int main(int argc, char *argv[]) {
 
 		if (status == -1) {
 			fprintf(stderr, "lush: Expected end of quoted string\n");
-		} else if (lush_run(L, args, status) != 0) {
+		} else {
+			lush_expand_globs(args);
+		}
+
+		if (lush_run(L, args, status) != 0) {
 			exit(1);
 		}
 
