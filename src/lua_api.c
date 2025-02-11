@@ -32,6 +32,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 // globals
 static bool debug_mode = false;
+bool suggestion_enable = true;
 
 // -- script execution --
 int lua_load_script(lua_State *L, const char *script, char **args) {
@@ -173,6 +174,13 @@ static int l_get_cwd(lua_State *L) {
 	lua_pushstring(L, cwd);
 	free(cwd);
 	return 1;
+}
+
+static int l_suggestions(lua_State *L) {
+	if (lua_isboolean(L, 1)) {
+		suggestion_enable = lua_toboolean(L, 1);
+	}
+	return 0;
 }
 
 static int l_debug(lua_State *L) {
@@ -426,6 +434,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "getcwd");
 	lua_pushcfunction(L, l_debug);
 	lua_setfield(L, -2, "debug");
+	lua_pushcfunction(L, l_suggestions);
+	lua_setfield(L, -2, "suggestions");
 	lua_pushcfunction(L, l_cd);
 	lua_setfield(L, -2, "cd");
 	lua_pushcfunction(L, l_exists);

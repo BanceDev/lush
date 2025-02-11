@@ -19,6 +19,8 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #define LUSH_H
 
 #include <lua.h>
+#include <stdbool.h>
+
 #define LUSH_LUA 5
 
 // alias
@@ -52,6 +54,10 @@ int lush_execute_pipeline(char ***commands, int num_commands);
 int lush_execute_chain(lua_State *L, char ***commands, int num_commands);
 
 void lush_format_prompt(const char *prompt_format);
+
+// enable for autocomplete text set in init.lua
+// initialized in the lua_api
+extern bool suggestion_enable;
 
 // format spec for the prompt
 extern char *prompt_format;

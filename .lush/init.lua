@@ -22,6 +22,9 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 local path = lush.getenv("HOME") .. "/bin:" .. lush.getenv("PATH")
 lush.setenv("PATH", path)
 
+-- you can choose to enable/disable inline suggestions
+lush.suggestions(true)
+
 -- the prompt can be customized here too
 -- %u is username, %h is hostname, %w is current working directory
 -- %t is current time in hr:min:sec, %d is date in MM/DD/YYYY

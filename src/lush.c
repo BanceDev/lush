@@ -617,7 +617,8 @@ static void reprint_buffer(char *buffer, int *last_lines, int *pos,
 	printf("\r\033[K");
 	printf("%s ", prompt);
 	printf("%s", buffer);
-	printf("\033[0;33m%s\033[0m ", suggestion);
+	if (suggestion_enable)
+		printf("\033[0;33m%s\033[0m ", suggestion);
 
 	// move cursor up and to the right to be in correct position
 	if (cursor_pos > 0)
