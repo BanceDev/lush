@@ -1390,6 +1390,21 @@ int lush_execute_pipeline(char ***commands, int num_commands) {
 	return 0;
 }
 
+static void build_alt_command(char *buffer, char **args) {
+	size_t offset = 0;
+
+	for (int i = 0; args[i]; i++) {
+		if (offset + strlen(args[i]) + 1 < BUFFER_SIZE) {
+			strcat(buffer, args[i]);
+			strcat(buffer, " ");
+			offset = strlen(buffer);
+		} else {
+			fprintf(stderr, "command too long\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
 int lush_execute_command(char **args, int input_fd, int output_fd) {
 	// create child
 	pid_t pid;
@@ -1419,8 +1434,15 @@ int lush_execute_command(char **args, int input_fd, int output_fd) {
 
 		// execute the command
 		if (execvp(args[0], args) == -1) {
-			perror("execvp");
-			exit(EXIT_FAILURE);
+			if (alt_shell) {
+				char command[BUFFER_SIZE] = {0};
+				build_alt_command(command, args);
+				execlp(alt_shell, alt_shell, "-c", command, (char *)NULL);
+				perror("alt shell");
+			} else {
+				perror("lush");
+				exit(EXIT_FAILURE);
+			}
 		}
 	} else if (pid < 0) {
 		// forking failed
@@ -1592,5 +1614,7 @@ int main(int argc, char *argv[]) {
 		free(prompt_format);
 	if (aliases != NULL)
 		free(aliases);
+	if (alt_shell != NULL)
+		free(alt_shell);
 	return 0;
 }

@@ -34,5 +34,8 @@ lush.setPrompt("[%u@%h: %w]")
 -- and the command to execute with the alias
 lush.alias("h", "help")
 
+-- you can set a backup shell for functionality not supported by Lunar Shell
+-- lush.altShell("bash")
+
 -- all functions from the Lunar Shell Lua API are available to you to
 -- customize your startup however you want

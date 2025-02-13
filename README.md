@@ -14,9 +14,22 @@
 Lunar Shell (lush) is an open source Linux shell with a single goal in mind. That goal is to offer the ability to write shell scripts for your operating system entirely in Lua. The Lua scripting language has many powerful features that allow for more control in the hands of the user to automate tasks on their machine.
 
 > [!NOTE]  
-> Lunar Shell is very early in development and may be lacking in many features common of other Linux shells.
+> Lunar Shell is very early in development and may be lacking in features common of other Linux shells.
 
 ## Compiling/Installation
+
+### Arch Linux
+
+```
+yay -Sy lush-shell
+echo "/usr/bin/lush" | sudo tee -a /etc/shells >/dev/null
+```
+
+### Debain/Ubuntu/Mint
+
+There is a deb package in [releases](https://github.com/BanceDev/lush/releases) 
+
+### Compile and Install from Source
 
 Clone the repo and run the install script to get the development version. If you want the most recent stable version download the source code zip from the most recent [release](https://github.com/BanceDev/lush/releases). Extract it and run the install script. This will also automatically set your system shell to Lunar Shell, you will need to log out and back in for the changes to take effect.
 
@@ -26,7 +39,7 @@ cd lush
 sh install.sh
 ```
 
-To update Lunar Shell pull the repo/download the newest release and then run the install script again.
+To update Lunar Shell pull the repo/download the newest release and then run the update.sh script.
 
 ## Lua Shell Scripting
 

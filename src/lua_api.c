@@ -33,6 +33,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 // globals
 static bool debug_mode = false;
 bool suggestion_enable = true;
+char *alt_shell;
 
 // -- script execution --
 int lua_load_script(lua_State *L, const char *script, char **args) {
@@ -422,6 +423,19 @@ static int l_exit(lua_State *L) {
 	return 0;
 }
 
+static int l_alt_shell(lua_State *L) {
+	const char *alt = luaL_checkstring(L, 1);
+
+	free(alt_shell);
+	alt_shell = strdup(alt);
+
+	if (!alt_shell) {
+		return luaL_error(L, "Memory allocation failed");
+	}
+
+	return 1;
+}
+
 // -- register Lua functions --
 
 void lua_register_api(lua_State *L) {
@@ -470,6 +484,8 @@ void lua_register_api(lua_State *L) {
 	lua_setfield(L, -2, "glob");
 	lua_pushcfunction(L, l_exit);
 	lua_setfield(L, -2, "exit");
+	lua_pushcfunction(L, l_alt_shell);
+	lua_setfield(L, -2, "altShell");
 	// set the table as global
 	lua_setglobal(L, "lush");
 }
