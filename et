@@ -1,0 +1,132 @@
+* [33m1982f1c[m[33m ([m[1;31mfork/main[m[33m, [m[1;31mfork/HEAD[m[33m)[m Smarter tracer: backup
+* [33m5e49f57[m Re-init submodules: backup
+* [33mbd4cfd2[m Arch dis Backup: lisp logs included
+* [33m9bf7f1f[m Backup: moving from Ubun to Arch
+* [33m2b1f666[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmy-feature-branch[m[33m, [m[1;33mtag: [m[1;33mv0.3.2[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;31mfork/my-feature-branch[m[33m, [m[1;32mmain[m[33m)[m v0.3.2
+* [33m17aadc3[m added ability to configure alternate shell
+* [33m9b85e55[m[33m ([m[1;33mtag: [m[1;33mv0.3.1[m[33m)[m v0.3.1
+* [33ma1cdb80[m add api method to enable/disable inline suggestions
+* [33mce3f1d2[m[33m ([m[1;33mtag: [m[1;33mv0.3.0[m[33m)[m v0.3.0
+* [33m640221c[m add globbing to command mode
+* [33m6f2e940[m added wildcard globbing
+* [33m823a5a4[m fixed --version bug
+* [33ma87df81[m made constant for lush_lua builtin index
+* [33me373f9a[m added trap builtin
+* [33m3904d58[m added command string mode
+* [33m5638f1b[m Update README.md
+* [33mc3afa71[m removed history test out of convenience
+* [33m6295ae2[m updated help messages
+* [33m6936fee[m[33m ([m[1;33mtag: [m[1;33mv0.2.3[m[33m)[m v0.2.3
+* [33ma0d5695[m added redirect/append for stdout, stderr, or both
+* [33m68ce253[m added exit api function
+* [33mb29a99b[m fixed chaining execution attempting to execute operator
+* [33m4028df2[m[33m ([m[1;33mtag: [m[1;33mv0.2.2[m[33m)[m v0.2.2
+* [33m80588be[m updated history tests
+* [33mcd55487[m fixed crash in redirect operator
+* [33m4cf1cba[m[33m ([m[1;33mtag: [m[1;33mv0.2.1[m[33m)[m v0.2.1
+* [33meda09a9[m fixed semicolon chaining functionality
+* [33me61e70d[m[33m ([m[1;33mtag: [m[1;33mv0.2.0[m[33m)[m v0.2.0
+* [33m4730d17[m fixed crash from incorrect pointer indexing
+* [33me13e23b[m added append chaining operator
+* [33mf7922ea[m added output redirection with
+* [33me067ca5[m added ; chaining operator
+* [33mccf4047[m added || chaining operator
+* [33m0539674[m Update README.md
+* [33mc6e9097[m fixed lua api exit status issue
+* [33m69592d5[m fixed splitting within quoted string
+* [33m1c41c12[m made and operator actually conditional
+* [33m6d0ff4d[m fixed operator chaining to handle commands terminating with an operator
+* [33me85cb6b[m implemented background process operator
+*   [33mb578aef[m Merge pull request #2 from BanceDev/chaining-operators
+[32m|[m[33m\[m  
+[32m|[m * [33m863b097[m implemented piping into new chaining method
+[32m|[m * [33mecfbc1f[m fixed && chaining for builtins
+[32m|[m * [33mb7718ed[m added basic && chaining
+[32m|[m * [33mb850121[m changed tokenizer to handle all the chaining operators
+[32m|[m[32m/[m  
+* [33m8997142[m Update README.md
+* [33m5914d2e[m added better clarification to help menu
+* [33mc3eb4b2[m improved installation instructions
+* [33m6f4a6c4[m[33m ([m[1;33mtag: [m[1;33mv0.1.1[m[33m)[m v0.1.1
+* [33mb5857f5[m fixed bug in input buffer handling due to misplaced print
+* [33m0dc9a6a[m Update build.yml checkout v4
+* [33m58a4647[m Update build.yml to artifact v4
+* [33m0b9c467[m fixed exit status issue with non interative mode
+* [33m2c7d28a[m added non interative mode for running lua scripts
+* [33mee88d00[m temporary github action fix until non-interactive mode is implemented
+* [33md41d846[m attempt to update build script to accept input into lush shell
+* [33m2fdc7cc[m prevent lush workflow from getting stuck in tests
+* [33mf21f5a8[m removed chsh in workflow
+* [33m11b81de[m Create build.yml
+* [33md25fc21[m updated documentation
+* [33m2870751[m added e2e testing to cover basic shell functionality
+* [33m9fffa2e[m updated buffer size for date to account for compiler warning
+* [33m0381ae7[m added glob function to lua APi
+* [33mdaace6e[m[33m ([m[1;33mtag: [m[1;33mv0.1.0[m[33m)[m v0.1.0
+* [33m6b3be9c[m initialized OLDPWD properly
+* [33md5874c5[m added HOSTNAME envar
+* [33m3165d96[m added OLDPWD environment var and cd - to go to OLDPWD
+* [33m68904ae[m added date format specifier for prompt
+* [33m32ee824[m spelling error in readme demo
+* [33m10910fd[m updated readme with visuals
+* [33m4361507[m fixed off-by-one error with prompt wrapping
+* [33me28bd74[m added tab to accept inline autocomplete
+* [33m3742e0b[m basic current directory suggestions
+* [33m8389686[m made it so that lua args properly reset between commands
+* [33me21a4d0[m removed demo image to cleanup
+* [33m2c3e681[m higher quality image for readme
+* [33m23fb50c[m added better demo to readme
+* [33m86cadef[m added handling for when prompt gets longer than terminal width
+* [33m50d69ad[m added support for multiline prompts
+* [33ma0ff5b1[m lua api functions for getting terminal width and height
+* [33m5e403a6[m added coloring to help command
+* [33m521316d[m add aliasing to init.lua
+* [33m49fe61d[m bugfix to inline backspace and delete on multiline buffer
+* [33m0ec71db[m fixed line wrapping when deleting inline
+* [33m4cdf16f[m updated gitignore
+* [33md6c203a[m fixed wrapping bug due to not using updated prompt_length
+* [33m73d9858[m added stripping of escape sequences from prompt size to allow for coloring
+*   [33m0f4b5ff[m Merge pull request #1 from Makaze/patch-1
+[34m|[m[35m\[m  
+[34m|[m * [33mb6e478c[m docs: update path
+* [35m|[m [33m49de8d3[m added support for init.lua for configuring shell
+[35m|[m[35m/[m  
+* [33m6a2689d[m added getenv and putenv to Lua API
+* [33mbfa2768[m added lua api functions for indexing history
+* [33mea0eb66[m added support for cli args for lua scripts
+* [33mc638ce8[m added --version flag
+* [33m0edfb38[m fixed error in install.sh instructions
+* [33m29c052c[m fixed bug with cursor alignment when adding text within the buffer
+* [33m29f1b14[m added API guide to readme
+* [33m305b17a[m Update README.md
+* [33mff06726[m better readme
+* [33m0b263c3[m Create FUNDING.yml
+* [33me6700fc[m Update README.md
+* [33m9c301c1[m fixed crash when no history exists yet and polls for history
+* [33md864cde[m fixed inability to move cursor between lines
+* [33md63e0e1[m cleaned up syntax
+* [33mb020cf5[m Update CONTRIBUTING.md
+* [33m41f8b9a[m bugfix on arrowkey movement after browsing history
+* [33m58cb10f[m updated readme
+* [33m99b8bb5[m upadted contribution guidelines
+* [33m64c61c4[m Create CONTRIBUTING.md
+* [33mbbcf154[m fixed bugs with multi line history elements
+* [33m65d523b[m added api functions for isFile, isDirectory, isReadable, and isWriteable
+* [33me828e25[m command history scrolling implemented
+* [33m995e8da[m history saving implemented
+* [33meea1194[m added exists function to lua api
+* [33m7dea3ee[m added missing lua registrations
+* [33m8936264[m updated the example.lua to use new cd command
+* [33m86b8b0e[m added cd to lua api
+* [33m72f5958[m fixed a bug where multiline commands printed wrong
+* [33m5568fba[m removed need for lush command to execute lua files
+* [33m3577398[m added debug mode for scripting
+* [33md5d3f94[m update lua api to table and added getcwd to api
+* [33m4fee5ce[m fixed crash in cd when no path found
+* [33m4375a8e[m searches .lush/scripts for lua files
+* [33mebdd4e8[m added basic lua scripting
+* [33m8ddcd6b[m added arrow key movement
+* [33m112a831[m updated help and fixed SIGINT
+* [33m5c2b255[m lunar shell logo
+* [33m58966d4[m changed prompt
+* [33mf6d7b19[m initial commit

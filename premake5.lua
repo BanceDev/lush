@@ -18,7 +18,11 @@ else
 	links({ "lua" })
 end
 
-includedirs({ lua_inc_path, "lib/hashmap" })
+includedirs({ 
+	lua_inc_path, 
+	"lib/hashmap",
+    "lib/compat53/c-api"
+})
 libdirs({ lua_lib_path })
 
 files({
@@ -26,8 +30,10 @@ files({
 	"src/**.c",
 	"lib/hashmap/**.h",
 	"lib/hashmap/**.c",
+    "lib/compat53/c-api/compat-5.3.h",
+    "lib/compat53/c-api/compat-5.3.c"
 })
-defines({ 'LUSH_VERSION="0.3.2"' })
+defines({ 'LUSH_VERSION="0.3.2"', 'COMPAT53_PREFIX=""' })
 
 filter("configurations:Debug")
 defines({ "DEBUG" })

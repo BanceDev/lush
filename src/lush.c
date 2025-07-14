@@ -21,6 +21,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include "lua.h"
 #include "lua_api.h"
 #include "lualib.h"
+#include "../lib/compat53/c-api/compat-5.3.h"
 #include <asm-generic/ioctls.h>
 #include <bits/time.h>
 #include <ctype.h>
@@ -1485,13 +1486,14 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
+		// init lua state
+	lua_State *L = luaL_newstate();
+	luaL_openlibs(L);
+	lua_register_api(L);
+	lua_run_init(L);
+
 	// check if being run in command string mode
 	if (argc > 2 && strcmp(argv[1], "-c") == 0) {
-		// init Lua state
-		lua_State *L = luaL_newstate();
-		luaL_openlibs(L);
-		lua_register_api(L);
-		lua_run_init(L);
 
 		// execute the command provided
 		char *command = argv[2];
@@ -1521,36 +1523,26 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	// init lua state
-	lua_State *L = luaL_newstate();
-	luaL_openlibs(L);
-	lua_register_api(L);
-	lua_run_init(L);
+    // This is the corrected logic for running a script file non-interactively.
+    if (argc > 1) {
+        char *ext = strrchr(argv[1], '.');
+        if (ext && strcmp(ext, ".lua") == 0) {
+            const char *script_name = argv[1];
+            // The arguments for the script start at argv[2].
+            // We create a pointer to that part of the array.
+            char **script_args = (argc > 2) ? &argv[2] : NULL;
 
-	// if a lua function is passed on load run non-interactively
-	if (argc > 1) {
-		char *ext = strrchr(argv[1], '.');
-		if (ext) {
-			ext++;
-			if (strcmp(ext, "lua") == 0) {
-				int status = 0;
-				argv++;
-				char ***args = lush_split_args(argv, &status);
+            // Call the script loader directly with the script and its arguments.
+            if (lua_load_script(L, script_name, script_args) != 0) {
+                exit(1); // Exit if the script had an error
+            }
 
-				if (status == -1) {
-					fprintf(stderr, "lush: Expected end of quoted string\n");
-				} else if (lush_run(L, args, status) != 0) {
-					exit(1);
-				}
+            lua_close(L); // Clean up and exit
+            return 0;
+        }
+    }
 
-				for (int i = 0; args[i]; i++) {
-					free(args[i]);
-				}
-				free(args);
-				return 0;
-			}
-		}
-	}
+    // --- Interactive Shell Mode ---
 
 	// eat ^C in main
 	struct sigaction sa_int;
