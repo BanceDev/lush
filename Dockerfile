@@ -24,6 +24,9 @@ WORKDIR /app
 
 COPY . .
 
+# Initialize git submodules inside the container
+RUN git submodule update --init --recursive
+
 # Creates the .lush config directory in the root user home directory as install.sh expects.
 RUN mkdir -p /root/.lush && cp -r ./.lush/* /root/.lush/
 
