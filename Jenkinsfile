@@ -2,6 +2,20 @@ pipeline {
     agent any
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Checking out code from Git and initializing submodules...'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: scm.branches,
+                    userRemoteConfigs: scm.userRemoteConfigs,
+                    extensions: [
+                        [$class: 'SubmoduleOption', disableSubmodules: false, recursiveSubmodules: true, trackingSubmodules: true]
+                    ]
+                ])
+            }
+        }
+
         stage('Build Application Image') {
             steps {
                 script {

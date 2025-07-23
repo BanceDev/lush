@@ -19,7 +19,6 @@ RUN wget https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy your project's source code into the container
 COPY . .
 
 # Generate the makefiles. This will be the default action if no other command is given.
