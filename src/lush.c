@@ -1510,7 +1510,6 @@ int main(int argc, char *argv[]) {
     // Pop package and preload tables
     lua_pop(L, 2);
     // --- End pre-loading ---
-	luaopen_compat53(L);
 	lua_register_api(L);
 	lua_run_init(L);
 

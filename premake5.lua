@@ -13,7 +13,8 @@ local lua_lib_path = "/usr/lib"
 if os.findlib("lua5.4") then
 	lua_inc_path = "/usr/include/lua5.4"
 	lua_lib_path = "/usr/lib/5.4"
-	links({ "lua5.4" })
+-- Readline for better interactive support, dl for dynamic loading, and m for the math library dependency
+	links({ "lua5.4", "readline", "dl", "m" })
 else
 	links({ "lua" })
 end
