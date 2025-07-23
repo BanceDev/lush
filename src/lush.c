@@ -1489,6 +1489,7 @@ int main(int argc, char *argv[]) {
 		// init lua state
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
+	luaopen_compat53(L);
 	lua_register_api(L);
 	lua_run_init(L);
 
