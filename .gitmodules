@@ -4,4 +4,3 @@
 [submodule "lib/hashmap"]
 	path = lib/hashmap
 	url = https://github.com/tidwall/hashmap.c.git
-
