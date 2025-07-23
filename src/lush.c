@@ -21,7 +21,7 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include "lua.h"
 #include "lua_api.h"
 #include "lualib.h"
-#include "../lib/compat53/c-api/compat-5.3.h"
+#include "compat-5.3.h"
 #include <asm-generic/ioctls.h>
 #include <bits/time.h>
 #include <ctype.h>
@@ -42,6 +42,10 @@ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
+
+// Forward declare the open functions for the compat C modules we need to preload
+int luaopen_bit32 (lua_State *L);
+int luaopen_utf8 (lua_State *L);
 
 #define BUFFER_SIZE 1024
 #define MAX_GLOB 512
@@ -1489,6 +1493,23 @@ int main(int argc, char *argv[]) {
 		// init lua state
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
+
+    // --- Pre-load compat modules ---
+    // This is to make C modules available to Lua
+    luaL_getglobal(L, "package");
+    luaL_getfield(L, -1, "preload");
+
+    // Preload bit32 for Lua 5.1 compatibility
+    lua_pushcfunction(L, luaopen_bit32);
+    lua_setfield(L, -2, "bit32");
+
+    // Preload utf8 for Lua 5.1/5.2 compatibility
+    lua_pushcfunction(L, luaopen_utf8);
+    lua_setfield(L, -2, "utf8");
+
+    // Pop package and preload tables
+    lua_pop(L, 2);
+    // --- End pre-loading ---
 	luaopen_compat53(L);
 	lua_register_api(L);
 	lua_run_init(L);

@@ -31,7 +31,12 @@ files({
 	"lib/hashmap/**.h",
 	"lib/hashmap/**.c",
     "lib/compat53/c-api/compat-5.3.h",
-    "lib/compat53/c-api/compat-5.3.c"
+    "lib/compat53/c-api/compat-5.3.c",
+    "lib/compat53/lbitlib.c",
+    "lib/compat53/liolib.c",
+    "lib/compat53/lstrlib.c",
+    "lib/compat53/ltablib.c",
+    "lib/compat53/lutf8lib.c"
 })
 defines({ 'LUSH_VERSION="0.3.2"', 'COMPAT53_PREFIX=""' })
 
