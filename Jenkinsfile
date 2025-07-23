@@ -7,7 +7,12 @@ pipeline {
         stage('Build Application Image') {
             steps {
                 script {
-                    // NOTE: Dockerfile handles submodule initialization
+                    echo 'Initializing Git submodules...'
+                    // First, sync the submodule URLs from .gitmodules to .git/config
+                    sh 'git submodule sync --recursive'
+                    // Then, initialize and update the submodules
+                    sh 'git submodule update --init --recursive'
+
                     echo 'Building the Lush application Docker image...'
                     sh 'docker build -t lush-app:latest .'
                 }
@@ -62,6 +67,7 @@ EOF
                         echo 'Creating and starting the build container...'
                         sh "docker run -d --name ${containerName} lush-app:latest sleep infinity"
 
+                        // Since the Docker image now has the full source, we only need to copy the test script.
                         echo 'Copying test script into the container...'
                         sh "docker cp test_52.lua ${containerName}:/app/test_52.lua"
 
