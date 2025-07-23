@@ -5,9 +5,10 @@ services:
       context: .
       dockerfile: Dockerfile.jenkins
       args:
-        # Pass the host's docker group ID to the build
+        # Pass all necessary host IDs to the build
+        UID: ${UID}
+        GID: ${GID}
         DOCKER_GID: ${DOCKER_GID}
-    user: "${UID}:${GID}" # Run the container as the current host user
     ports:
       - "8080:8080"
       - "50000:50000"
