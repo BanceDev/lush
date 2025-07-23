@@ -5,12 +5,20 @@ pipeline {
         stage('Build Application Image') {
             steps {
                 script {
+                    echo 'Pre-build diagnostics...'
+                    sh 'pwd'
+                    sh 'ls -la'
+                    sh 'find . -name "premake5.lua" -type f'
+                    
                     echo 'Initializing Git submodules...'
-                    // Manually initialize and update the git submodules
                     sh 'git submodule update --init --recursive'
+                    
+                    echo 'Post-submodule diagnostics...'
+                    sh 'ls -la'
+                    sh 'find . -name "premake5.lua" -type f'
+                    sh 'ls -lR | head -50'  // Show directory structure
 
                     echo 'Building the Lush application Docker image...'
-                    // Build the image from the Dockerfile and tag it
                     sh 'docker build -t lush-app:latest .'
                 }
             }
@@ -18,10 +26,16 @@ pipeline {
         stage('Compile Project in Container') {
             steps {
                 script {
+                    echo 'Container diagnostics...'
+                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest pwd'
+                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ls -la'
+                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest find . -name "premake5.lua" -type f'
+                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ls -la /app'
+                    
                     echo 'Compiling the Lush project inside the container...'
-                    // Run the container to generate Makefiles and compile
-                    // We mount the current directory to get the compiled artifacts back out
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest'
+                    // First run premake to generate build files
+                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest premake5 gmake2'
+                    // Then run make to compile
                     sh 'docker run --rm -v "$(pwd)":/app lush-app:latest make'
                 }
             }
@@ -29,8 +43,11 @@ pipeline {
         stage('Run Lua 5.2 Compatibility Test') {
             steps {
                 script {
+                    echo 'Pre-test diagnostics...'
+                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ls -la bin/'
+                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest find . -name "lush" -type f'
+                    
                     echo 'Running the Lua 5.2 compatibility test script...'
-                    // Create the test script file
                     sh '''
                     cat <<'EOF' > test_52.lua
                     -- Lua 5.2-specific features
@@ -53,7 +70,6 @@ pipeline {
                     print("--- Test Complete ---")
                     EOF
                     '''
-                    // Run the container and execute the test script with the compiled binary
                     sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ./bin/Debug/lush/lush test_52.lua'
                 }
             }
@@ -62,7 +78,6 @@ pipeline {
     post {
         always {
             echo 'Pipeline finished.'
-            // Clean up the created docker image to save space
             sh 'docker rmi lush-app:latest || true'
         }
     }
