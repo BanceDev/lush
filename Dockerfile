@@ -24,7 +24,7 @@ WORKDIR /app
 COPY . .
 
 # Creates the .lush config directory in the root user home directory as install.sh expects.
-RUN mkdir -p /root/.lush && cp -r ./.lush/scripts /root/.lush/
+RUN mkdir -p /root/.lush && cp -r ./.lush/* /root/.lush/
 
 CMD ["premake5", "gmake2"]
 
