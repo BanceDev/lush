@@ -6,4 +6,4 @@ obj
 .cache
 .vscode/
 .DS_Store
-Thumbs.db
+Thumbs.dbjenkins_home/
