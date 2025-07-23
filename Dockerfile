@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
     unzip \
+    git \
     lua5.4 \
     liblua5.4-dev \
     && rm -rf /var/lib/apt/lists/*

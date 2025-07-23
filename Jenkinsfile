@@ -1,5 +1,3 @@
-// Jenkinsfile
-
 pipeline {
     agent any
 
@@ -8,7 +6,6 @@ pipeline {
             steps {
                 script {
                     echo 'Initializing Git submodules...'
-                    // Manually initialize and update the git submodules
                     sh 'git submodule update --init --recursive'
 
                     echo 'Building the Lush application Docker image...'
@@ -19,7 +16,6 @@ pipeline {
         stage('Compile & Test Project') {
             steps {
                 script {
-                    // Define a unique name for our temporary build container
                     def containerName = "lush-build-${BUILD_NUMBER}"
                     
                     try {
@@ -65,21 +61,22 @@ EOF
                         '''
                         
                         echo 'Creating and starting the build container...'
-                        // Create the container and keep it running in the background
                         sh "docker run -d --name ${containerName} lush-app:latest sleep infinity"
+
+                        echo 'Copying complete workspace (with populated submodules) into container...'
+                        // This ensures the populated lib/ directory gets into the container
+                        sh "docker cp . ${containerName}:/app/"
 
                         echo 'Copying test script into the container...'
                         sh "docker cp test_52.lua ${containerName}:/app/test_52.lua"
 
                         echo 'Compiling and running tests inside the container...'
-                        sh "docker exec ${containerName} /bin/bash -c 'premake5 gmake2 && make && ./bin/Debug/lush/lush test_52.lua'"
+                        sh "docker exec ${containerName} /bin/bash -c 'cd /app && premake5 gmake2 && make && ./bin/Debug/lush/lush test_52.lua'"
 
                         echo 'Extracting compiled binary from the container...'
-                        // This is good practice for storing build artifacts
                         sh "docker cp ${containerName}:/app/bin ./"
 
                     } finally {
-                        // This block ensures the build container is always stopped and removed
                         echo "Cleaning up build container: ${containerName}"
                         sh "docker stop ${containerName} >/dev/null 2>&1 || true"
                         sh "docker rm ${containerName} >/dev/null 2>&1 || true"
