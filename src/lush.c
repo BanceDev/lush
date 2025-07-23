@@ -1492,12 +1492,12 @@ int main(int argc, char *argv[]) {
 
 		// init lua state
 	lua_State *L = luaL_newstate();
-	luaL_openlibs(L);
+	lua_openlibs(L);
 
     // --- Pre-load compat modules ---
     // This is to make C modules available to Lua
-    luaL_getglobal(L, "package");
-    luaL_getfield(L, -1, "preload");
+    lua_getglobal(L, "package");
+    lua_getfield(L, -1, "preload");
 
     // Preload bit32 for Lua 5.1 compatibility
     lua_pushcfunction(L, luaopen_bit32);
