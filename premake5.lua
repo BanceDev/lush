@@ -39,7 +39,7 @@ files({
     "lib/compat53/ltablib.c",
     "lib/compat53/lutf8lib.c"
 })
-defines({ 'LUSH_VERSION="0.3.2"', 'COMPAT53_PREFIX=""' })
+defines({ 'LUSH_VERSION="0.3.2"', 'COMPAT53_PREFIX=""', 'LUA_COMPAT_BITLIB' })
 
 filter("configurations:Debug")
 defines({ "DEBUG" })

@@ -1492,23 +1492,18 @@ int main(int argc, char *argv[]) {
 
 		// init lua state
 	lua_State *L = luaL_newstate();
+	if (!L) {
+    	fprintf(stderr, "Failed to create Lua state\n");
+    	return -1; // or handle appropriately
+	}
 	luaL_openlibs(L);
 
-    // --- Pre-load compat modules ---
-    // This is to make C modules available to Lua
-    lua_getglobal(L, "package");
-    lua_getfield(L, -1, "preload");
+    // --- Load compat modules and make them global ---
+    luaL_requiref(L, "bit32", luaopen_bit32, 1);
+    lua_pop(L, 1); // luaL_requiref leaves the module on the stack
 
-    // Preload bit32 for Lua 5.1 compatibility
-    lua_pushcfunction(L, luaopen_bit32);
-    lua_setfield(L, -2, "bit32");
-
-    // Preload utf8 for Lua 5.1/5.2 compatibility
-    lua_pushcfunction(L, luaopen_utf8);
-    lua_setfield(L, -2, "utf8");
-
-    // Pop package and preload tables
-    lua_pop(L, 2);
+    luaL_requiref(L, "utf8", luaopen_utf8, 1);
+    lua_pop(L, 1);
     // --- End pre-loading ---
 	lua_register_api(L);
 	lua_run_init(L);
