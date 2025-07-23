@@ -23,6 +23,8 @@ WORKDIR /app
 
 COPY . .
 
-# Generate the makefiles. This will be the default action if no other command is given.
+# Creates the .lush config directory in the root user home directory as install.sh expects.
+RUN mkdir -p /root/.lush && cp -r ./.lush/scripts /root/.lush/
+
 CMD ["premake5", "gmake2"]
 
