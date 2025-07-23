@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
     unzip \
+    lua5.4 \
+    liblua5.4-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Premake5
@@ -23,3 +25,4 @@ COPY . .
 
 # Generate the makefiles. This will be the default action if no other command is given.
 CMD ["premake5", "gmake2"]
+
