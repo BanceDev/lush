@@ -6,9 +6,9 @@ pipeline {
             steps {
                 script {
                     echo 'Building the Docker image...'
-                    // Build the Docker image from the Dockerfile in the current directory
+                    // Build the Docker image from the Dockerfile.jenkins in the current directory
                     // and tag it as 'lush-arch-test'
-                    sh 'docker build -t lush-arch-test .'
+                    sh 'docker build -f Dockerfile.jenkins -t lush-arch-test .'
                 }
             }
         }
