@@ -5,48 +5,42 @@ pipeline {
         stage('Build Application Image') {
             steps {
                 script {
-                    echo 'Pre-build diagnostics...'
-                    sh 'pwd'
-                    sh 'ls -la'
-                    sh 'find . -name "premake5.lua" -type f'
-                    
                     echo 'Initializing Git submodules...'
+                    // Manually initialize and update the git submodules
                     sh 'git submodule update --init --recursive'
-                    
-                    echo 'Post-submodule diagnostics...'
-                    sh 'ls -la'
-                    sh 'find . -name "premake5.lua" -type f'
-                    sh 'ls -lR | head -50'  // Show directory structure
 
                     echo 'Building the Lush application Docker image...'
                     sh 'docker build -t lush-app:latest .'
                 }
             }
         }
-        stage('Compile Project in Container') {
+        stage('Compile Project & Extract Artifacts') {
             steps {
                 script {
-                    echo 'Container diagnostics...'
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest pwd'
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ls -la'
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest find . -name "premake5.lua" -type f'
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ls -la /app'
+                    // Define a unique name for our temporary container
+                    def containerName = "lush-build-${BUILD_NUMBER}"
                     
-                    echo 'Compiling the Lush project inside the container...'
-                    // First run premake to generate build files
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest premake5 gmake2'
-                    // Then run make to compile
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest make'
+                    try {
+                        echo 'Compiling the Lush project inside a container...'
+                        // Run the entire build process in a single, named container.
+                        // This container will be stopped but not removed
+                        // which preserves its filesystem for the next step
+                        sh "docker run --name ${containerName} lush-app:latest /bin/bash -c 'premake5 gmake2 && make'"
+                        
+                        echo 'Extracting compiled binary from the container...'
+                        // Copy the 'bin' directory
+                        // from the container's filesystem to the Jenkins workspace.
+                        sh "docker cp ${containerName}:/app/bin ./"
+                    } finally {
+                        echo "Cleaning up build container: ${containerName}"
+                        sh "docker rm ${containerName} || true"
+                    }
                 }
             }
         }
         stage('Run Lua 5.2 Compatibility Test') {
             steps {
                 script {
-                    echo 'Pre-test diagnostics...'
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ls -la bin/'
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest find . -name "lush" -type f'
-                    
                     echo 'Running the Lua 5.2 compatibility test script...'
                     sh '''
                     cat <<'EOF' > test_52.lua
@@ -70,7 +64,8 @@ pipeline {
                     print("--- Test Complete ---")
                     EOF
                     '''
-                    sh 'docker run --rm -v "$(pwd)":/app lush-app:latest ./bin/Debug/lush/lush test_52.lua'
+                    // bin should be in workspace
+                    sh 'docker run --rm -v "$(pwd)":/work -w /work lush-app:latest ./bin/Debug/lush/lush test_52.lua'
                 }
             }
         }
