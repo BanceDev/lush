@@ -14,58 +14,57 @@ pipeline {
                 }
             }
         }
-        stage('Compile Project & Extract Artifacts') {
+        stage('Compile & Test Project') {
             steps {
                 script {
-                    // Define a unique name for our temporary container
+                    // Define a unique name for our temporary build container
                     def containerName = "lush-build-${BUILD_NUMBER}"
                     
                     try {
-                        echo 'Compiling the Lush project inside a container...'
-                        // Run the entire build process in a single, named container.
-                        // This container will be stopped but not removed
-                        // which preserves its filesystem for the next step
-                        sh "docker run --name ${containerName} lush-app:latest /bin/bash -c 'premake5 gmake2 && make'"
-                        
+                        echo 'Creating test script on Jenkins agent...'
+                        sh '''
+                        cat <<'EOF' > test_52.lua
+                        -- Lua 5.2-specific features
+                        print("--- Running Lua 5.2 Compatibility Test ---")
+                        local _ENV = { print = print, x = 123 } -- lexical environments
+                        function show_x()
+                            print("x =", x)
+                        end
+                        show_x()
+                        -- Bitwise ops (added in 5.2)
+                        local a, b = 0x5, 0x3
+                        print("Bitwise AND:", a & b)
+                        -- load() replaces loadstring() (binary and text)
+                        local f = load("return 10 + 20")
+                        print("Loaded result:", f())
+                        -- table.pack / table.unpack
+                        local t = table.pack(1, 2, 3, nil, 5)
+                        print("Packed length:", t.n)
+                        print("Unpacked values:", table.unpack(t, 1, t.n))
+                        print("--- Test Complete ---")
+                        EOF
+                        '''
+
+                        echo 'Creating and starting the build container...'
+                        // Create the container and keep it running in the background
+                        sh "docker run -d --name ${containerName} lush-app:latest sleep infinity"
+
+                        echo 'Copying test script into the container...'
+                        sh "docker cp test_52.lua ${containerName}:/app/test_52.lua"
+
+                        echo 'Compiling and running tests inside the container...'
+                        sh "docker exec ${containerName} /bin/bash -c 'premake5 gmake2 && make && ./bin/Debug/lush/lush test_52.lua'"
+
                         echo 'Extracting compiled binary from the container...'
-                        // Copy the 'bin' directory
-                        // from the container's filesystem to the Jenkins workspace.
+                        // This is good practice for storing build artifacts
                         sh "docker cp ${containerName}:/app/bin ./"
+
                     } finally {
+                        // This block ensures the build container is always stopped and removed
                         echo "Cleaning up build container: ${containerName}"
-                        sh "docker rm ${containerName} || true"
+                        sh "docker stop ${containerName} >/dev/null 2>&1 || true"
+                        sh "docker rm ${containerName} >/dev/null 2>&1 || true"
                     }
-                }
-            }
-        }
-        stage('Run Lua 5.2 Compatibility Test') {
-            steps {
-                script {
-                    echo 'Running the Lua 5.2 compatibility test script...'
-                    sh '''
-                    cat <<'EOF' > test_52.lua
-                    -- Lua 5.2-specific features
-                    print("--- Running Lua 5.2 Compatibility Test ---")
-                    local _ENV = { print = print, x = 123 } -- lexical environments
-                    function show_x()
-                        print("x =", x)
-                    end
-                    show_x()
-                    -- Bitwise ops (added in 5.2)
-                    local a, b = 0x5, 0x3
-                    print("Bitwise AND:", a & b)
-                    -- load() replaces loadstring() (binary and text)
-                    local f = load("return 10 + 20")
-                    print("Loaded result:", f())
-                    -- table.pack / table.unpack
-                    local t = table.pack(1, 2, 3, nil, 5)
-                    print("Packed length:", t.n)
-                    print("Unpacked values:", table.unpack(t, 1, t.n))
-                    print("--- Test Complete ---")
-                    EOF
-                    '''
-                    // bin should be in workspace
-                    sh 'docker run --rm -v "$(pwd)":/work -w /work lush-app:latest ./bin/Debug/lush/lush test_52.lua'
                 }
             }
         }
