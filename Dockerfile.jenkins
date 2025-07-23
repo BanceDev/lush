@@ -1,0 +1,29 @@
+# Dockerfile.jenkins
+# Use the official Jenkins image as a base
+FROM jenkins/jenkins:lts-jdk17
+
+# Pass the Docker group ID from the host as a build argument
+ARG DOCKER_GID
+
+# Switch to root user to install dependencies
+USER root
+
+# Install Docker CLI so Jenkins can interact with the host's Docker daemon
+RUN apt-get update && apt-get install -y lsb-release sudo
+RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
+  https://download.docker.com/linux/debian/gpg
+RUN echo "deb [arch=$(dpkg --print-architecture) \
+  signed-by=/usr/share/keyrings/docker-archive-keyring.asc] \
+  https://download.docker.com/linux/debian \
+  $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+RUN apt-get update && apt-get install -y docker-ce-cli
+
+# Create a 'docker' group with the host's GID to match permissions
+# This is the key step to prevent the container from exiting
+RUN if [ -n "$DOCKER_GID" ]; then groupadd -g $DOCKER_GID docker; else groupadd -g 999 docker; fi
+
+# Add the 'jenkins' user to the docker group
+RUN usermod -aG docker jenkins
+
+# Switch back to the jenkins user
+USER jenkins
