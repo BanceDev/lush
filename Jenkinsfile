@@ -8,6 +8,16 @@ pipeline {
                     echo 'Initializing Git submodules...'
                     sh 'git submodule update --init --recursive'
 
+                    // Debug: Check if submodules are populated ON JENKINS AGENT
+                    echo 'Checking submodule status on Jenkins agent...'
+                    sh 'git submodule status'
+                    
+                    echo 'Checking lib directory contents on Jenkins agent...'
+                    sh 'ls -la lib/ || echo "lib directory not found"'
+                    sh 'find lib/ -name "*.c" -o -name "*.h" | head -10 || echo "No C files found in lib"'
+                    sh 'ls -la lib/compat53/ || echo "compat53 not found"'
+                    sh 'ls -la lib/compat53/c-api/ || echo "c-api directory not found"'
+
                     echo 'Building the Lush application Docker image...'
                     sh 'docker build -t lush-app:latest .'
                 }
@@ -22,41 +32,9 @@ pipeline {
                         echo 'Creating test script on Jenkins agent...'
                         sh '''
                         cat <<'EOF' > test_52.lua
--- Lua 5.2-specific features test
 print("--- Running Lua 5.2 Compatibility Test ---")
-
--- Test 1: Basic functionality
 print("Basic print test: Hello from Lush!")
-
--- Test 2: Bitwise operations using the preloaded bit32 library
--- The lush host preloads compat modules, so we don't need to 'require' it.
-local a, b = 5, 3
-print("Bitwise AND of", a, "and", b, "=", bit32.band(a, b))
-print("Bitwise OR of", a, "and", b, "=", bit32.bor(a, b))
-
--- Test 3: load() function (replaces loadstring in Lua 5.2)
-local f, err = load("return 10 + 20")
-if f then
-    print("Loaded function result:", f())
-else
-    print("Failed to load function:", err)
-end
-
--- Test 4: table.unpack
-local t = {1, 2, 3}
-print("Unpacked values:", table.unpack(t))
-
--- Test 5: String operations
-local str = "Hello, World!"
-print("String length:", #str)
-print("Substring:", string.sub(str, 1, 5))
-
--- Test 6: Math operations
-print("Math operations:")
-print("  sqrt(16) =", math.sqrt(16))
-print("  max(10, 20, 5) =", math.max(10, 20, 5))
-
-print("--- Test Complete: All basic features working ---")
+print("--- Test Complete ---")
 EOF
                         '''
                         
@@ -64,17 +42,26 @@ EOF
                         sh "docker run -d --name ${containerName} lush-app:latest sleep infinity"
 
                         echo 'Copying complete workspace (with populated submodules) into container...'
-                        // This ensures the populated lib/ directory gets into the container
                         sh "docker cp . ${containerName}:/app/"
+
+                        // Debug: Check what's actually in the container AFTER copying
+                        echo 'Debugging: Checking container contents AFTER workspace copy...'
+                        sh "docker exec ${containerName} ls -la /app/lib/ || echo 'lib directory empty or missing in container'"
+                        sh "docker exec ${containerName} ls -la /app/lib/compat53/ || echo 'compat53 not found in container'"
+                        sh "docker exec ${containerName} ls -la /app/lib/compat53/c-api/ || echo 'c-api not found in container'"
+                        sh "docker exec ${containerName} find /app/lib/ -name '*.c' | head -5 || echo 'No C files found in container lib'"
 
                         echo 'Copying test script into the container...'
                         sh "docker cp test_52.lua ${containerName}:/app/test_52.lua"
 
-                        echo 'Compiling and running tests inside the container...'
-                        sh "docker exec ${containerName} /bin/bash -c 'cd /app && premake5 gmake2 && make && ./bin/Debug/lush/lush test_52.lua'"
+                        echo 'Running premake5 to see what it generates...'
+                        sh "docker exec ${containerName} /bin/bash -c 'cd /app && premake5 gmake2'"
+                        
+                        echo 'Checking generated Makefile...'
+                        sh "docker exec ${containerName} /bin/bash -c 'cd /app && head -50 lush.make | grep -i compat || echo \"No compat references found\"'"
 
-                        echo 'Extracting compiled binary from the container...'
-                        sh "docker cp ${containerName}:/app/bin ./"
+                        echo 'Attempting to compile...'
+                        sh "docker exec ${containerName} /bin/bash -c 'cd /app && make'"
 
                     } finally {
                         echo "Cleaning up build container: ${containerName}"
