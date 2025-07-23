@@ -31,9 +31,10 @@ pipeline {
                             print("x =", x)
                         end
                         show_x()
-                        -- Bitwise ops (added in 5.2)
+                        -- Bitwise ops (using the bit32 library provided by compat53)
+                        local bit32 = require("bit32")
                         local a, b = 0x5, 0x3
-                        print("Bitwise AND:", a & b)
+                        print("Bitwise AND:", bit32.band(a, b))
                         -- load() replaces loadstring() (binary and text)
                         local f = load("return 10 + 20")
                         print("Loaded result:", f())
@@ -44,7 +45,6 @@ pipeline {
                         print("--- Test Complete ---")
                         EOF
                         '''
-
                         echo 'Creating and starting the build container...'
                         // Create the container and keep it running in the background
                         sh "docker run -d --name ${containerName} lush-app:latest sleep infinity"
