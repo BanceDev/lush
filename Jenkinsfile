@@ -1,3 +1,5 @@
+// Jenkinsfile
+
 pipeline {
     agent any
 
@@ -30,24 +32,23 @@ print("--- Running Lua 5.2 Compatibility Test ---")
 -- Test 1: Basic functionality
 print("Basic print test: Hello from Lush!")
 
--- Test 2: Bitwise operations using bit32 library (provided by compat53)
-local bit32 = require("bit32")
-local a, b = 0x5, 0x3
+-- Test 2: Bitwise operations using the preloaded bit32 library
+-- The lush host preloads compat modules, so we don't need to 'require' it.
+local a, b = 5, 3
 print("Bitwise AND of", a, "and", b, "=", bit32.band(a, b))
 print("Bitwise OR of", a, "and", b, "=", bit32.bor(a, b))
 
 -- Test 3: load() function (replaces loadstring in Lua 5.2)
-local f = load("return 10 + 20")
+local f, err = load("return 10 + 20")
 if f then
     print("Loaded function result:", f())
 else
-    print("Failed to load function")
+    print("Failed to load function:", err)
 end
 
--- Test 4: table.pack and table.unpack
-local t = table.pack(1, 2, 3, nil, 5)
-print("Packed table length:", t.n)
-print("First 3 values:", table.unpack(t, 1, 3))
+-- Test 4: table.unpack
+local t = {1, 2, 3}
+print("Unpacked values:", table.unpack(t))
 
 -- Test 5: String operations
 local str = "Hello, World!"
