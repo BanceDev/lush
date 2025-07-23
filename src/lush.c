@@ -1492,7 +1492,7 @@ int main(int argc, char *argv[]) {
 
 		// init lua state
 	lua_State *L = luaL_newstate();
-	lua_openlibs(L);
+	luaL_openlibs(L);
 
     // --- Pre-load compat modules ---
     // This is to make C modules available to Lua
