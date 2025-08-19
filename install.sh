@@ -1,5 +1,8 @@
 #!/bin/sh
 
+echo "Initializing and updating submodules..."
+git submodule update --init --recursive
+
 # Function to install packages using apt (Debian/Ubuntu)
 install_with_apt() {
     sudo apt-get update

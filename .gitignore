@@ -1,5 +1,9 @@
 Makefile
 *.make
+*.log
 bin
 obj
 .cache
+.vscode/
+.DS_Store
+Thumbs.dbjenkins_home/
