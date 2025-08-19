@@ -42,8 +42,8 @@ jobs:
 
       - name: Install shell program
         run: |
-          if [ ! -d ~/.lush ]; then
-            cp -rf ./.lush ~/
+          if [ ! -d ~/.config/lush ]; then
+            cp -rf ./lush ~/.config/
           fi
 
           sudo cp ./bin/Debug/lush/lush /usr/bin/lush.new
