@@ -44,8 +44,8 @@ int lua_load_script(lua_State *L, const char *script, char **args) {
 	} else {
 		const char *home_dir = getenv("HOME");
 		if (home_dir != NULL) {
-			snprintf(script_path, sizeof(script_path), "%s/.lush/scripts/%s",
-					 home_dir, script);
+			snprintf(script_path, sizeof(script_path),
+					 "%s/.config/lush/scripts/%s", home_dir, script);
 
 			if (access(script_path, F_OK) != 0) {
 				// script not in either location

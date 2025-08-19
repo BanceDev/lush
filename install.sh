@@ -54,12 +54,12 @@ rm premake.tar.gz
 
 premake5 gmake
 make
-if [ ! -d ~/.lush ]; then
-    cp -rf ./.lush ~/
+if [ ! -d ~/.config/lush ]; then
+    cp -rf ./lush ~/.config/
 fi
 
 # always update example
-cp -f ./.lush/scripts/example.lua ~/.lush/scripts/example.lua
+cp -f ./lush/scripts/example.lua ~/config/lush/scripts/example.lua
 
 # Install the new shell binary to a temporary location
 sudo cp ./bin/Debug/lush/lush /usr/bin/lush.new
