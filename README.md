@@ -34,7 +34,7 @@ There is a deb package in [releases](https://github.com/BanceDev/lush/releases)
 Clone the repo and run the install script to get the development version. If you want the most recent stable version download the source code zip from the most recent [release](https://github.com/BanceDev/lush/releases). Extract it and run the install script. This will also automatically set your system shell to Lunar Shell, you will need to log out and back in for the changes to take effect.
 
 ```
-git clone https://github.com/BanceDev/lush.git
+git clone --recursive https://github.com/BanceDev/lush.git
 cd lush
 sh install.sh
 ```
