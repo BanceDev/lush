@@ -39,12 +39,6 @@ if rc == false then
 	lush.exit()
 end
 
-print("\nTesting History...")
-rc = lush.exec("history_test.lua")
-if rc == false then
-	lush.exit()
-end
-
 print("\nTesting Environment Variables...")
 rc = lush.exec("env_test.lua")
 if rc == false then

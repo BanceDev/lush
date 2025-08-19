@@ -34,7 +34,7 @@ static char *get_history_path() {
 		return NULL;
 	}
 
-	size_t path_length = strlen(pw->pw_dir) + strlen("/.lush/.history") + 1;
+	size_t path_length = strlen(pw->pw_dir) + strlen("/.lush_history") + 1;
 	char *path = malloc(path_length);
 	if (!path) {
 		perror("malloc");
@@ -42,7 +42,7 @@ static char *get_history_path() {
 	}
 
 	strcpy(path, pw->pw_dir);
-	strcat(path, "/.lush/.history");
+	strcat(path, "/.lush_history");
 
 	return path;
 }

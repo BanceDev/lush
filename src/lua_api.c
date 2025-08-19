@@ -95,9 +95,13 @@ void lua_run_init(lua_State *L) {
 	char script_path[64];
 	const char *home_dir = getenv("HOME");
 	if (home_dir != NULL) {
-		snprintf(script_path, sizeof(script_path), "%s/.lush/init.lua",
+		snprintf(script_path, sizeof(script_path), "%s/.config/lush/init.lua",
 				 home_dir);
-		lua_load_script(L, script_path, NULL);
+		FILE *f = fopen(script_path, "r");
+		if (f != NULL) {
+			fclose(f);
+			lua_load_script(L, script_path, NULL);
+		}
 	}
 }
 
